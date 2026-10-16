@@ -71,6 +71,9 @@ const state = {
 };
 
 const ui = {
+  appShell: document.querySelector(".app-shell"),
+  sidebarScrim: document.getElementById("roomSidebarScrim"),
+  roomSidebarToggle: document.getElementById("toggleRoomSidebar"),
   lobby: document.getElementById("lobbyView"),
   roomView: document.getElementById("roomView"),
   movieGrid: document.getElementById("movieGrid"),
@@ -501,12 +504,24 @@ function showToast(message) {
 
 function setView(view) {
   const inRoom = view === "room" && Boolean(state.room);
+  ui.appShell.classList.toggle("is-room-view", inRoom);
+  setRoomSidebar(false);
   ui.lobby.classList.toggle("hidden", inRoom);
   ui.roomView.classList.toggle("hidden", !inRoom);
   document.getElementById("navDiscover").classList.toggle("is-active", !inRoom);
   document.getElementById("navRoom").classList.toggle("is-active", inRoom);
   if (inRoom) renderRoom();
   else window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function setRoomSidebar(open) {
+  const isOpen = Boolean(open && ui.appShell.classList.contains("is-room-view"));
+  ui.appShell.classList.toggle("room-sidebar-open", isOpen);
+  ui.sidebarScrim.classList.toggle("hidden", !isOpen);
+  ui.roomSidebarToggle.setAttribute("aria-expanded", String(isOpen));
+  const label = isOpen ? "Hide navigation" : "Show navigation";
+  ui.roomSidebarToggle.setAttribute("aria-label", label);
+  ui.roomSidebarToggle.title = label;
 }
 
 function openProfileDialog() {
@@ -1844,6 +1859,15 @@ document.getElementById("joinForm").addEventListener("submit", function (event) 
 });
 document.getElementById("roomCodeInput").addEventListener("input", function (event) {
   event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+});
+ui.roomSidebarToggle.addEventListener("click", function () {
+  setRoomSidebar(!ui.appShell.classList.contains("room-sidebar-open"));
+});
+ui.sidebarScrim.addEventListener("click", function () { setRoomSidebar(false); });
+document.addEventListener("keydown", function (event) {
+  if (event.key === "Escape" && ui.appShell.classList.contains("room-sidebar-open") && !document.querySelector("dialog[open]")) {
+    setRoomSidebar(false);
+  }
 });
 document.getElementById("backToDiscover").addEventListener("click", showLobbyAndBrowse);
 document.getElementById("closeVideoDialogButton").addEventListener("click", function () { ui.videoDialog.close(); });
