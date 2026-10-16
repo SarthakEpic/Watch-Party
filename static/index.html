@@ -7,11 +7,11 @@
     <meta name="description" content="A little cinema club for watching together, wherever you are.">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <title>Afterglow — watch together</title>
-    <link rel="stylesheet" href="/static/styles.css?v=ui-feedback-8">
+    <link rel="stylesheet" href="/static/styles.css?v=ui-feedback-9">
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="Main navigation">
+      <aside class="sidebar" id="mainNavigation" aria-label="Main navigation">
         <a class="brand" href="/" aria-label="Afterglow home">
           <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
           <span class="brand-name">afterglow<span>®</span></span>
@@ -47,6 +47,7 @@
         </button>
         <div class="sidebar-footnote">MOVIE NIGHTS, BETTER TOGETHER</div>
       </aside>
+      <button class="room-sidebar-scrim hidden" id="roomSidebarScrim" type="button" aria-label="Close navigation"></button>
 
       <main class="main-view lobby-view" id="lobbyView">
         <header class="topbar">
@@ -156,6 +157,7 @@
       <main class="main-view room-view hidden" id="roomView">
         <header class="room-topbar">
           <div class="room-heading">
+            <button class="icon-button room-sidebar-toggle" id="toggleRoomSidebar" type="button" aria-label="Show navigation" aria-controls="mainNavigation" aria-expanded="false" title="Show navigation" data-icon="menu"></button>
             <button class="back-button" id="backToDiscover" type="button" aria-label="Back to discover">←</button>
             <div>
               <div class="breadcrumb"><span>AFTERGLOW</span><span class="breadcrumb-slash">/</span><strong>THE SCREENING ROOM</strong></div>
@@ -397,8 +399,8 @@
     </dialog>
 
     <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
-    <script src="/static/icons.js?v=ui-feedback-8" defer></script>
+    <script src="/static/icons.js?v=ui-feedback-9" defer></script>
     <script src="/static/media.js?v=ui-feedback-8" defer></script>
-    <script src="/static/app.js?v=ui-feedback-12" defer></script>
+    <script src="/static/app.js?v=ui-feedback-13" defer></script>
   </body>
 </html>
