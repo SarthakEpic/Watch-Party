@@ -1,42 +1,65 @@
 # Put the demo online for free
 
-This guide uses Render for the Python app, plus the LiveKit and S3-compatible services already configured for this project. The app has a Render Blueprint file at the project root: `render.yaml`.
+This guide uses Render for the Python app, plus the LiveKit and S3-compatible services already configured for this project. The repository is public, so you can deploy it by URL without connecting a GitHub account. The app also has a Render Blueprint file at the project root for people who use a linked Git provider.
 
 ## Before you begin
 
-- You need a GitHub account and a Render account. Render's first-deploy guide says its free deployment flow does not require payment details.
-- You need to put the project source in a GitHub repository so Render can build it. The repository may be private.
-- Keep `.env`, `watch_party.sqlite3`, and `uploads/` out of GitHub. `.gitignore` already excludes them. Never paste secret values into chat or commit them to the repository.
-- In this project folder, there is currently no GitHub repository connection. Render cannot deploy this folder directly from your computer until the source is pushed to GitHub.
+- You need a Render account. You can sign up with your Gmail address. Render's first-deploy guide says its free deployment flow does not require payment details.
+- The project is already in this public repository: [SarthakEpic/Watch-Party](https://github.com/SarthakEpic/Watch-Party).
+- Never paste secret values into chat or commit them to the repository. `.env`, `watch_party.sqlite3`, and `uploads/` are excluded from the pushed source.
 
-## Step 1: Put the project on GitHub
+## Step 1: Sign in to Render
 
-The easiest route is GitHub Desktop:
+1. Open [Render](https://dashboard.render.com/) and create an account or sign in with Gmail.
+2. You do not need to connect a GitHub account for this public repository.
 
-1. Install GitHub Desktop from [desktop.github.com](https://desktop.github.com/) and sign in.
-2. Choose **File → Add Local Repository** and select `D:\Projects\Watch Party`. If Desktop says the folder is not a repository yet, choose its option to create a repository in that folder.
-3. Check the changed-files list before publishing. It must not contain `.env`, `watch_party.sqlite3`, `watch_party.sqlite3-shm`, `watch_party.sqlite3-wal`, or files from `uploads/`.
-4. Commit the project files and publish the repository to GitHub. A private repository is fine.
+## Step 2: Create the web service from the public repository
 
-You can also use the GitHub website's repository upload page, but take extra care not to upload `.env` or the SQLite database.
+1. In the Render dashboard click **New → Web Service**.
+2. Under **Source Code**, choose **Public Git Repository**.
+3. Paste `https://github.com/SarthakEpic/Watch-Party` and click **Connect**.
+4. Enter these settings:
 
-## Step 2: Create the free Render service
+   - **Name:** `afterglow-watch-party` (or another available name)
+   - **Branch:** `main`
+   - **Language:** `Python 3`
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `uvicorn app:app --host 0.0.0.0 --port $PORT`
+   - **Plan:** `Free`
 
-1. Sign in at [render.com](https://render.com/) and connect your GitHub account.
-2. From the Render dashboard choose **New → Blueprint** and select the repository you just published.
-3. Render reads `render.yaml` and prepares one Python web service on the **Free** plan. Check the plan before continuing.
-4. When Render asks for environment values, copy the values for `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `OMDB_API_KEY`, `LIVEKIT_URL`, `LIVEKIT_API_KEY`, and `LIVEKIT_API_SECRET` from your local `.env` into Render's secure form. Do this only in Render; do not send the values here or add them to GitHub.
-5. For `S3_PREFIX`, keep `watchparty-media`. If you miss a secret during the first prompt, add it under the service's **Environment** page and save the change to redeploy.
-6. Create the Blueprint and wait for the first deploy to finish. Render shows the public `https://....onrender.com` address on the service page.
+5. Open **Advanced** and set the health check path to `/health`.
 
-The Blueprint intentionally does not configure `REDIS_URL`. One Render instance runs one app process, so Redis is not needed for its live room coordination. Your Upstash database can remain configured for local or future multi-worker use.
+This public-repository option does not use the `render.yaml` Blueprint automatically, so enter the commands above in the form.
 
-## Step 3: Check the deployed app
+## Step 3: Enter the service settings privately
 
-1. Open `https://YOUR-SERVICE.onrender.com/health`. Check that it reports `status: ok`, `media_mode: livekit-sfu`, and `upload_storage: s3`.
-2. Open the main site in two separate browsers and create/join a room. Test playback controls and chat.
-3. Join video chat from both browsers. Test a small upload, then play it from the room. Supabase Free currently has limited storage and data transfer, so use direct video links or YouTube for larger videos.
-4. Watch the Render, LiveKit, and storage dashboards for usage. The free plans have caps; stay within them and do not enable a paid plan.
+In the service form's environment-variable section, add:
+
+- `MEDIA_STORAGE` = `s3`
+- `S3_PREFIX` = `watchparty-media`
+- `S3_BUCKET`
+- `S3_REGION`
+- `S3_ENDPOINT_URL`
+- `S3_ACCESS_KEY_ID`
+- `S3_SECRET_ACCESS_KEY`
+- `OMDB_API_KEY`
+- `LIVEKIT_URL`
+- `LIVEKIT_API_KEY`
+- `LIVEKIT_API_SECRET`
+
+For the nine keys without a preset value, copy each matching value from your local `.env` file directly into Render. Do not upload `.env` or send any key here. If the form does not show environment variables, create the service first, then add them under its **Environment** page and redeploy.
+
+Do not add `REDIS_URL` for this setup. One Render instance runs one app process, so Redis is not needed for its live room coordination. Your Upstash database can remain configured for local or future multi-worker use.
+
+## Step 4: Create and check the service
+
+1. Click **Create Web Service** and wait for the deploy status to say **Live**. Render will show the public `https://....onrender.com` address on the service page.
+2. Open `https://YOUR-SERVICE.onrender.com/health`. Check that it reports `status: ok`, `media_mode: livekit-sfu`, and `upload_storage: s3`.
+3. Open the main site in two separate browsers and create/join a room. Test playback controls and chat.
+4. Join video chat from both browsers. Test a small upload, then play it from the room. Supabase Free currently has limited storage and data transfer, so use direct video links or YouTube for larger videos.
+5. Watch the Render, LiveKit, and storage dashboards for usage. The free plans have caps; stay within them and do not enable a paid plan.
+
+Because you are using a public repository URL instead of a linked Git provider, Render will not deploy automatically when the repository changes. Use **Manual Deploy** in Render when you want to pull a later change.
 
 ## What the free deployment means
 

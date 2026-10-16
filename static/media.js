@@ -104,6 +104,11 @@
     tiles.delete(id);
   }
 
+  function setMediaButtonLabel(button, iconName, label) {
+    if (window.AfterglowIcons) button.replaceChildren(window.AfterglowIcons.create(iconName, 15), document.createTextNode(" " + label));
+    else button.textContent = label;
+  }
+
   function closePeer(key) {
     const entry = peers.get(key);
     if (!entry) return;
@@ -370,7 +375,7 @@
     const inCall = people.includes(identity.userId);
     ui.dock.classList.toggle("hidden", people.length === 0 && !(room && room.screen_sharer));
     ui.count.textContent = people.length + (people.length === 1 ? " face" : " faces");
-    ui.videoButton.innerHTML = inCall ? "<span aria-hidden=\"true\">×</span> Leave video chat" : "<span aria-hidden=\"true\">◉</span> Join video chat";
+    setMediaButtonLabel(ui.videoButton, inCall ? "videoOff" : "video", inCall ? "Leave video chat" : "Join video chat");
     ui.videoButton.classList.toggle("is-on", inCall);
     ui.micButton.classList.toggle("hidden", !inCall);
     ui.cameraButton.classList.toggle("hidden", !inCall);
@@ -380,8 +385,8 @@
         Boolean(localVideoStream.getAudioTracks()[0] && localVideoStream.getAudioTracks()[0].enabled);
       const cameraEnabled = liveKitRoom ? liveKitRoom.localParticipant.isCameraEnabled :
         Boolean(localVideoStream.getVideoTracks()[0] && localVideoStream.getVideoTracks()[0].enabled);
-      ui.micButton.textContent = audioEnabled ? "Mic on" : "Mic off";
-      ui.cameraButton.textContent = cameraEnabled ? "Camera on" : "Camera off";
+      setMediaButtonLabel(ui.micButton, audioEnabled ? "mic" : "micOff", audioEnabled ? "Mic on" : "Mic off");
+      setMediaButtonLabel(ui.cameraButton, cameraEnabled ? "camera" : "cameraOff", cameraEnabled ? "Camera on" : "Camera off");
       ui.micButton.classList.toggle("is-danger", !audioEnabled);
       ui.cameraButton.classList.toggle("is-danger", !cameraEnabled);
       ui.micButton.setAttribute("aria-pressed", String(audioEnabled));

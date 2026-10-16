@@ -43,6 +43,7 @@ SESSION_COOKIE = "afterglow_session"
 SESSION_MAX_AGE = 60 * 60 * 24 * 30
 load_dotenv(ROOT / ".env")
 OMDB_API_KEY = os.getenv("OMDB_API_KEY", "").strip()
+KLIPY_APP_KEY = os.getenv("KLIPY_APP_KEY", "").strip()
 TURN_URLS = [url.strip() for url in os.getenv("TURN_URLS", "").split(",") if url.strip()]
 TURN_SHARED_SECRET = os.getenv("TURN_SHARED_SECRET", "").strip()
 LIVEKIT_URL = os.getenv("LIVEKIT_URL", "").strip()
@@ -65,7 +66,6 @@ redis_heartbeat_task: asyncio.Task | None = None
 INSTANCE_ID = secrets.token_hex(8)
 REDIS_ROOM_PREFIX = "afterglow:room:"
 REDIS_EVENT_CHANNEL = "afterglow:room-events"
-SAMPLE_VIDEO_URL = "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
 OMDB_ATTRIBUTION = "Movie details and poster links supplied by OMDb. Ratings are reported by OMDb from IMDb. OMDb is not affiliated with IMDb."
 
 
@@ -1273,6 +1273,14 @@ async def session_info(request: Request, response: Response) -> dict[str, Any]:
     return {"user": create_guest(response, request)}
 
 
+@app.get("/api/client-config")
+async def client_config(response: Response) -> dict[str, str]:
+    # KLIPY's sticker API is designed to be called directly by the browser.
+    # Its app key is consequently public; it is never a server-side secret.
+    response.headers["Cache-Control"] = "no-store"
+    return {"klipy_app_key": KLIPY_APP_KEY}
+
+
 @app.patch("/api/profile")
 async def update_profile(payload: ProfileUpdate, request: Request) -> dict[str, Any]:
     require_same_origin(request)
@@ -1507,17 +1515,19 @@ async def create_room(payload: RoomCreate, request: Request) -> dict[str, Any]:
     demo_movie = None
     if payload.demo:
         demo_movie = {
-            "id": "sample-spring-reel",
-            "title": "Petals at First Light",
+            "id": "demo-sample-video",
+            "title": "Sample clip",
             "year": None,
-            "overview": "A short CC0 sample clip for trying synchronized playback. It is a demo reel, not a full-length film.",
-            "genre_ids": [99],
-            "genre_names": ["Demo short"],
+            "overview": "A sample YouTube video to try synchronized playback with your watch party.",
+            "genre_ids": [16, 28],
+            "genre_names": ["Sample clip"],
             "runtime": None,
             "poster_path": None,
             "poster_theme": "rose",
-            "source_url": SAMPLE_VIDEO_URL,
-            "source_label": "CC0 sample clip",
+            "source_url": "https://youtu.be/yVndvvCdvU4?si=L0iOdFUS68nKxjS6",
+            "source_kind": "youtube",
+            "youtube_id": "yVndvvCdvU4",
+            "source_label": "Sample video",
         }
     while True:
         code = "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))
@@ -1835,7 +1845,7 @@ async def apply_action(
         room["chat"] = room["chat"][-40:]
     elif action == "reaction":
         emoji = str(message.get("emoji") or "")
-        if emoji not in {"❤️", "😂", "👏", "😮", "🍿", "✨"}:
+        if emoji not in {"❤️", "😂", "👏", "😮", "🍿", "✨", "🔥", "🥹", "🙌", "👀"}:
             return False, "That reaction is not supported."
         room["chat"].append(
             {
@@ -2046,7 +2056,11 @@ async def room_socket(websocket: WebSocket, code: str) -> None:
                     break
                 changed, error = await apply_action(room, user_id, name, message)
                 if error:
-                    await websocket.send_json({"type": "error", "message": error})
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": error,
+                        "action_id": str(message.get("action_id") or "")[:96],
+                    })
             if changed:
                 await broadcast_snapshot(room, str(message.get("action_id") or ""))
     except WebSocketDisconnect:

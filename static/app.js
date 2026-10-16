@@ -1,4 +1,28 @@
-const EMOJI = ["❤️", "😂", "👏", "😮", "🍿", "✨"];
+const EMOJI = ["❤️", "😂", "👏", "😮", "🍿", "✨", "🔥", "🥹", "🙌", "👀"];
+const CHAT_EMOJIS = [
+  ["❤️", "heart love"], ["🧡", "orange heart"], ["💛", "yellow heart"], ["💚", "green heart"],
+  ["💙", "blue heart"], ["💜", "purple heart"], ["🖤", "black heart"], ["🤍", "white heart"],
+  ["😂", "laugh tears funny"], ["🤣", "rolling laugh"], ["🥹", "teary touched"], ["😭", "cry"],
+  ["😮", "wow surprised"], ["😱", "scream shock"], ["😏", "smirk"], ["🥰", "love heart eyes"],
+  ["👏", "clap applause"], ["🙌", "celebrate hands"], ["🤝", "deal"], ["👍", "thumbs up"],
+  ["👀", "eyes watching"], ["🤔", "thinking"], ["🫣", "peek"], ["🤯", "mind blown"],
+  ["🍿", "popcorn movie"], ["🎬", "clapper movie"], ["🎥", "camera film"], ["🎞️", "film frames"],
+  ["🥤", "drink soda"], ["🍫", "chocolate snack"], ["🍕", "pizza"], ["🧸", "cute bear"],
+  ["✨", "sparkles magic"], ["⭐", "star"], ["🌙", "moon night"], ["🔥", "fire hot"],
+  ["💀", "skull funny"], ["🫶", "heart hands"], ["💅", "slay"], ["🕺", "dance"],
+  ["🐈", "cat cute"], ["🐼", "panda cute"], ["🐸", "frog cute"], ["🦊", "fox cute"],
+];
+const DEMO_SAMPLE_VIDEO = {
+  id: "demo-sample-video",
+  title: "Sample clip",
+  overview: "A sample YouTube video to try synchronized playback with your watch party.",
+  source_url: "https://youtu.be/yVndvvCdvU4?si=L0iOdFUS68nKxjS6",
+  source_kind: "youtube",
+  youtube_id: "yVndvvCdvU4",
+  source_label: "Sample video",
+  genre_names: ["Sample clip"],
+};
+const LEGACY_DEMO_VIDEO_IDS = ["sample-spring-reel", "official-tengen-preview"];
 const YOUTUBE_DRIFT_THRESHOLD_SECONDS = 1.5;
 const YOUTUBE_CORRECTION_COOLDOWN_MS = 5000;
 const YOUTUBE_BUFFER_STALL_MS = 10000;
@@ -27,10 +51,20 @@ const state = {
   youtubeRecoveryAttemptAt: 0,
   applyingPlaybackUntil: 0,
   pendingMovie: null,
+  videoDialogMovie: null,
   pendingAction: null,
+  actionAcknowledgements: new Map(),
+  waitingMovieActionId: null,
   draggedSeek: false,
   activeTab: "chat",
   lastChatCount: 0,
+  pickerTab: "emoji",
+  klipyAppKey: "",
+  klipySearchTimer: null,
+  klipySearchSequence: 0,
+  emojiSuggestionIndex: 0,
+  emojiSuggestions: [],
+  emojiSuggestionStart: 0,
   reconnectTimer: null,
   catalogTimer: null,
   catalog: [],
@@ -59,6 +93,13 @@ const ui = {
   chatMessages: document.getElementById("chatMessages"),
   chatForm: document.getElementById("chatForm"),
   chatInput: document.getElementById("chatInput"),
+  chatPicker: document.getElementById("chatPicker"),
+  emojiGrid: document.getElementById("emojiGrid"),
+  emojiSearch: document.getElementById("emojiSearch"),
+  klipyStickerSearch: document.getElementById("klipyStickerSearch"),
+  klipyStickerStatus: document.getElementById("klipyStickerStatus"),
+  stickerGrid: document.getElementById("stickerGrid"),
+  emojiAutocomplete: document.getElementById("emojiAutocomplete"),
   memberList: document.getElementById("memberList"),
   playlist: document.getElementById("playlistList"),
   pollCard: document.getElementById("pollCard"),
@@ -72,14 +113,346 @@ const ui = {
   uploadProgress: document.getElementById("uploadProgress"),
   uploadProgressLabel: document.getElementById("uploadProgressLabel"),
   sourceModeGrid: document.getElementById("sourceModeGrid"),
+  submitVideoButton: document.getElementById("submitVideoButton"),
   toastRegion: document.getElementById("toastRegion"),
 };
+
+// Handle the primary action directly. This keeps the stream button responsive
+// even if the browser's dialog-form submit behavior differs between browsers.
+ui.submitVideoButton.addEventListener("click", function (event) {
+  event.preventDefault();
+  event.stopPropagation();
+  submitVideo();
+});
 
 function makeElement(tagName, className, text) {
   const element = document.createElement(tagName);
   if (className) element.className = className;
   if (text !== undefined && text !== null) element.textContent = text;
   return element;
+}
+
+function makeId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+    window.crypto.getRandomValues(bytes);
+  } else {
+    for (let index = 0; index < bytes.length; index += 1) bytes[index] = Math.floor(Math.random() * 256);
+  }
+  return Array.from(bytes, function (byte) { return byte.toString(16).padStart(2, "0"); }).join("");
+}
+
+function encodeStickerPayload(payload) {
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  let binary = "";
+  bytes.forEach(function (byte) { binary += String.fromCharCode(byte); });
+  return "[[sticker:" + btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "") + "]]";
+}
+
+function safeKlipyMediaUrl(value) {
+  try {
+    const source = String(value || "");
+    const url = new URL(source);
+    if (url.protocol !== "https:" || !/(^|\.)klipy\.com$/i.test(url.hostname)) return "";
+    if (!/\.(gif|webp|png|jpe?g|mp4|webm)$/i.test(url.pathname)) return "";
+    return source;
+  } catch (_) { return ""; }
+}
+
+function klipyMediaElement(url, className, label) {
+  const isVideo = /\.(mp4|webm)(?:[?#]|$)/i.test(url);
+  const media = makeElement(isVideo ? "video" : "img", className);
+  if (isVideo) {
+    media.autoplay = true;
+    media.loop = true;
+    media.muted = true;
+    media.playsInline = true;
+    media.preload = "metadata";
+    media.setAttribute("aria-label", label || "Animated sticker");
+  } else {
+    media.alt = label || "Movie-night sticker";
+    media.loading = "lazy";
+    media.decoding = "async";
+  }
+  media.src = url;
+  media.addEventListener("error", function () { media.classList.add("is-unavailable"); });
+  return media;
+}
+
+function decodeStickerMessage(text) {
+  const match = String(text || "").match(/^\[\[sticker:([A-Za-z0-9_-]{1,450})\]\]$/);
+  if (!match) return null;
+  try {
+    const base64 = match[1].replace(/-/g, "+").replace(/_/g, "/");
+    const binary = atob(base64 + "=".repeat((4 - base64.length % 4) % 4));
+    const bytes = Uint8Array.from(binary, function (character) { return character.charCodeAt(0); });
+    const value = JSON.parse(new TextDecoder().decode(bytes));
+    if (value && value.k === "klipy") {
+      const url = safeKlipyMediaUrl(value.u);
+      if (!url) return null;
+      return { type: "klipy", url: url, label: String(value.s || "Movie-night sticker").slice(0, 80) };
+    }
+    if (value && Array.isArray(value.a)) {
+      return {
+        type: "emoji",
+        label: String(value.s || "Movie-night moment").slice(0, 48),
+        art: value.a.slice(0, 4).map(function (item) { return String(item).slice(0, 8); }),
+      };
+    }
+    return null;
+  } catch (_) { return null; }
+}
+
+function encodeKlipyStickerMessage(sticker) {
+  return encodeStickerPayload({ k: "klipy", s: String(sticker.title || "Movie-night sticker").slice(0, 80), u: sticker.url });
+}
+
+function createStickerElement(sticker) {
+  if (sticker.type === "klipy") {
+    const card = makeElement("figure", "chat-sticker-message is-klipy");
+    card.setAttribute("aria-label", sticker.label);
+    const image = klipyMediaElement(sticker.url, "chat-sticker-image", sticker.label);
+    const caption = makeElement("figcaption", "chat-sticker-caption");
+    caption.append(makeElement("span", "chat-sticker-label", sticker.label), makeElement("span", "chat-sticker-credit", "via KLIPY"));
+    card.append(image, caption);
+    return card;
+  }
+  const card = makeElement("span", "chat-sticker-message");
+  card.setAttribute("aria-label", sticker.label);
+  card.append(makeElement("span", "chat-sticker-art", (sticker.art || []).join(" ")));
+  card.append(makeElement("span", "chat-sticker-label", sticker.label));
+  return card;
+}
+
+function setKlipyStickerStatus(message, kind) {
+  ui.klipyStickerStatus.textContent = message;
+  ui.klipyStickerStatus.className = "picker-status" + (kind ? " is-" + kind : "");
+}
+
+function firstKlipyUrl() {
+  for (let index = 0; index < arguments.length; index += 1) {
+    const item = arguments[index];
+    const value = item && typeof item === "object" ? item.url : item;
+    const url = safeKlipyMediaUrl(value);
+    if (url) return url;
+  }
+  return "";
+}
+
+function klipyStickerFromResult(item, index) {
+  const file = item && item.file && typeof item.file === "object" ? item.file : {};
+  const xs = file.xs || {};
+  const sm = file.sm || {};
+  const md = file.md || {};
+  const hd = file.hd || {};
+  const preview = file.preview || {};
+  const url = firstKlipyUrl(sm.webp, sm.gif, sm.mp4, sm.webm, sm.png, sm.jpg, sm.jpeg, md.webp, md.gif, md.mp4, md.webm, md.png, md.jpg, md.jpeg, hd.webp, hd.gif, hd.mp4, hd.webm, hd.png, hd.jpg, hd.jpeg, preview.webp, preview.gif, preview.mp4, preview.webm, preview.png, preview.jpg, preview.jpeg);
+  const previewUrl = firstKlipyUrl(xs.webp, xs.gif, xs.mp4, xs.webm, xs.png, xs.jpg, xs.jpeg, preview.webp, preview.gif, preview.mp4, preview.webm, preview.png, preview.jpg, preview.jpeg, sm.webp, sm.gif, sm.mp4, sm.webm, sm.png, sm.jpg, sm.jpeg) || url;
+  const title = String(item && (item.title || (item.ad && item.ad.title) || item.slug || (item.type === "ad" && "Sponsored")) || "Movie-night sticker").trim().slice(0, 80);
+  return { id: String(item && (item.id || item.slug) || index), slug: String(item && item.slug || ""), title: title, url: url, previewUrl: previewUrl };
+}
+
+function klipyStickerResults(payload) {
+  const candidates = [
+    payload && payload.result && payload.result.data && payload.result.data.data,
+    payload && payload.result && payload.result.data,
+    payload && payload.data && payload.data.data,
+    payload && payload.data,
+  ];
+  return candidates.find(Array.isArray) || [];
+}
+
+function trackKlipyShare(sticker, query) {
+  if (!state.klipyAppKey || !sticker.slug) return;
+  const url = "https://api.klipy.com/api/v1/" + encodeURIComponent(state.klipyAppKey) + "/stickers/share/" + encodeURIComponent(sticker.slug);
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ customer_id: state.userId, q: query || "" }),
+    keepalive: true,
+  }).catch(function () { /* Sharing the chat message should not depend on analytics. */ });
+}
+
+function renderKlipyStickers(items, query) {
+  ui.stickerGrid.replaceChildren();
+  if (!items.length) {
+    setKlipyStickerStatus(query ? "No stickers came up. Try another search." : "No trending stickers are available right now.", "empty");
+    return;
+  }
+  setKlipyStickerStatus(items.length + " stickers · Select one to send it to everyone.");
+  items.forEach(function (item, index) {
+    const sticker = klipyStickerFromResult(item, index);
+    const button = makeElement("button", "sticker-choice klipy-sticker-choice");
+    button.type = "button";
+    button.title = sticker.url ? "Send “" + sticker.title + "”" : sticker.title;
+    button.setAttribute("aria-label", sticker.url ? "Send sticker: " + sticker.title : sticker.title + " preview unavailable");
+    button.disabled = !sticker.url;
+    if (sticker.previewUrl) {
+      button.append(klipyMediaElement(sticker.previewUrl, "klipy-sticker-thumb", ""));
+    } else {
+      button.append(makeElement("span", "klipy-sticker-unavailable", "Preview unavailable"));
+    }
+    button.append(makeElement("span", "sticker-choice-label", sticker.title));
+    button.addEventListener("click", function () {
+      const message = encodeKlipyStickerMessage(sticker);
+      if (message.length > 500) {
+        showToast("This sticker link is too long to share in chat.");
+        return;
+      }
+      if (sendAction("chat", { text: message })) {
+        trackKlipyShare(sticker, query);
+        closeChatPicker();
+      }
+    });
+    ui.stickerGrid.append(button);
+  });
+}
+
+async function loadKlipyStickers(query) {
+  const search = String(query || "").trim().slice(0, 80);
+  const requestId = ++state.klipySearchSequence;
+  ui.stickerGrid.replaceChildren();
+  if (!state.klipyAppKey) {
+    setKlipyStickerStatus("Live stickers need a KLIPY app key in the server settings.", "setup");
+    return;
+  }
+  setKlipyStickerStatus("Finding movie-night stickers…", "loading");
+  const endpoint = "https://api.klipy.com/api/v1/" + encodeURIComponent(state.klipyAppKey) + "/stickers/" + (search ? "search" : "trending");
+  const localeMatch = String(navigator.language || "en-US").match(/-([a-z]{2})$/i);
+  const locale = localeMatch ? localeMatch[1].toLowerCase() : "us";
+  const params = new URLSearchParams({ page: "1", per_page: "20", locale: locale, content_filter: "high", customer_id: state.userId || "guest" });
+  if (search) params.set("q", search);
+  try {
+    const response = await fetch(endpoint + "?" + params.toString(), { headers: { Accept: "application/json" } });
+    const payload = await response.json().catch(function () { return {}; });
+    if (requestId !== state.klipySearchSequence) return;
+    if (!response.ok) {
+      const message = response.status === 401 || response.status === 403 ? "KLIPY did not accept the app key. Check the server setting." :
+        response.status === 429 ? "KLIPY is limiting requests. Wait a moment and try again." : "KLIPY stickers could not be loaded. Try again shortly.";
+      setKlipyStickerStatus(message, "error");
+      return;
+    }
+    renderKlipyStickers(klipyStickerResults(payload), search);
+  } catch (_) {
+    if (requestId === state.klipySearchSequence) setKlipyStickerStatus("Could not reach KLIPY. Check your connection and try again.", "error");
+  }
+}
+
+function renderStickerPicker(query) {
+  loadKlipyStickers(query === undefined ? ui.klipyStickerSearch.value : query);
+}
+
+function scheduleKlipyStickerSearch(query) {
+  window.clearTimeout(state.klipySearchTimer);
+  setKlipyStickerStatus("Search movie reactions, plot twists, and more…");
+  state.klipySearchTimer = window.setTimeout(function () { loadKlipyStickers(query); }, 320);
+}
+
+function insertEmojiAtCursor(emoji) {
+  const input = ui.chatInput;
+  const start = input.selectionStart === null ? input.value.length : input.selectionStart;
+  const end = input.selectionEnd === null ? start : input.selectionEnd;
+  input.setRangeText(emoji, start, end, "end");
+  input.focus();
+  hideEmojiAutocomplete();
+  renderEmojiSuggestions();
+}
+
+function renderEmojiPicker(query) {
+  const value = String(query || "").trim().toLowerCase();
+  const matching = CHAT_EMOJIS.filter(function (item) {
+    return !value || item[1].includes(value) || item[0].includes(value);
+  });
+  ui.emojiGrid.replaceChildren();
+  matching.forEach(function (item) {
+    const button = makeElement("button", "emoji-choice", item[0]);
+    button.type = "button";
+    button.title = item[1];
+    button.setAttribute("aria-label", item[1]);
+    button.addEventListener("click", function () { insertEmojiAtCursor(item[0]); });
+    ui.emojiGrid.append(button);
+  });
+  if (!matching.length) ui.emojiGrid.append(makeElement("p", "picker-empty", "No emoji match that search."));
+}
+
+function setPickerTab(tab) {
+  const selectedTab = tab === "stickers" ? "stickers" : "emoji";
+  state.pickerTab = selectedTab;
+  document.querySelectorAll("[data-picker-tab]").forEach(function (button) {
+    const selected = button.dataset.pickerTab === selectedTab;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-selected", String(selected));
+  });
+  document.getElementById("emojiPickerPane").classList.toggle("hidden", selectedTab !== "emoji");
+  document.getElementById("stickersPickerPane").classList.toggle("hidden", selectedTab !== "stickers");
+  if (selectedTab === "emoji") ui.emojiSearch.focus();
+  else renderStickerPicker();
+}
+
+function openChatPicker(tab) {
+  ui.chatPicker.classList.remove("hidden");
+  document.getElementById("chatPickerToggle").setAttribute("aria-expanded", "true");
+  hideEmojiAutocomplete();
+  renderEmojiPicker(ui.emojiSearch.value);
+  setPickerTab(tab || state.pickerTab || "emoji");
+}
+
+function closeChatPicker(restoreFocus) {
+  ui.chatPicker.classList.add("hidden");
+  document.getElementById("chatPickerToggle").setAttribute("aria-expanded", "false");
+  if (restoreFocus !== false) ui.chatInput.focus();
+}
+
+function hideEmojiAutocomplete() {
+  ui.emojiAutocomplete.classList.add("hidden");
+  state.emojiSuggestions = [];
+  state.emojiSuggestionIndex = 0;
+}
+
+function renderEmojiSuggestions() {
+  const input = ui.chatInput;
+  const cursor = input.selectionStart === null ? input.value.length : input.selectionStart;
+  const prefix = input.value.slice(0, cursor);
+  const match = prefix.match(/:([a-z0-9_-]{2,})$/i);
+  if (!match) { hideEmojiAutocomplete(); return; }
+  const query = match[1].toLowerCase();
+  const matching = CHAT_EMOJIS.filter(function (item) { return item[1].split(" ").some(function (word) { return word.startsWith(query); }); }).slice(0, 6);
+  if (!matching.length) { hideEmojiAutocomplete(); return; }
+  state.emojiSuggestions = matching;
+  state.emojiSuggestionStart = cursor - match[0].length;
+  state.emojiSuggestionIndex = Math.min(state.emojiSuggestionIndex, matching.length - 1);
+  ui.emojiAutocomplete.replaceChildren();
+  matching.forEach(function (item, index) {
+    const button = makeElement("button", "emoji-suggestion" + (index === state.emojiSuggestionIndex ? " is-active" : ""));
+    button.type = "button";
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", String(index === state.emojiSuggestionIndex));
+    button.append(makeElement("span", "emoji-suggestion-glyph", item[0]), makeElement("span", "emoji-suggestion-name", ":" + item[1].split(" ")[0] + ":"));
+    button.addEventListener("pointerdown", function (event) { event.preventDefault(); });
+    button.addEventListener("click", function () { selectEmojiSuggestion(index); });
+    ui.emojiAutocomplete.append(button);
+  });
+  ui.emojiAutocomplete.classList.remove("hidden");
+}
+
+function selectEmojiSuggestion(index) {
+  const suggestion = state.emojiSuggestions[index];
+  if (!suggestion) return;
+  const input = ui.chatInput;
+  const cursor = input.selectionStart === null ? input.value.length : input.selectionStart;
+  const end = input.selectionEnd === null ? cursor : input.selectionEnd;
+  input.setRangeText(suggestion[0] + " ", state.emojiSuggestionStart, end, "end");
+  hideEmojiAutocomplete();
+  input.focus();
+}
+
+function replaceKnownShortcodes(text) {
+  const aliases = new Map();
+  CHAT_EMOJIS.forEach(function (item) { aliases.set(item[1].split(" ")[0], item[0]); });
+  return String(text || "").replace(/:([a-z0-9_-]+):/gi, function (token, name) { return aliases.get(name.toLowerCase()) || token; });
 }
 
 function safeTheme(theme) {
@@ -384,7 +757,7 @@ async function createRoom(demo) {
       method: "POST",
       body: JSON.stringify({
         demo: Boolean(demo),
-        title: demo ? "Sample reel · Petals at first light" : "A little Friday cinema club",
+        title: demo ? "Sample clip" : "Friday movie night",
       }),
     });
     await enterRoom(result.room.code, result.room);
@@ -437,6 +810,7 @@ function connectToRoom(code) {
   if (window.AfterglowMedia) window.AfterglowMedia.setSocket(socket);
   socket.addEventListener("open", function () {
     window.clearTimeout(state.reconnectTimer);
+    state.reconnectTimer = null;
     socket.send(JSON.stringify({ type: "ping", client_time: Date.now() }));
     document.getElementById("syncLabel").textContent = "Room is live";
     if (state.pendingAction) {
@@ -446,7 +820,7 @@ function connectToRoom(code) {
     if (state.pendingMovie) {
       const movie = state.pendingMovie;
       state.pendingMovie = null;
-      openVideoDialog(movie);
+      if (!ui.videoDialog.open) openVideoDialog(movie);
     }
   });
   socket.addEventListener("message", function (event) {
@@ -456,13 +830,20 @@ function connectToRoom(code) {
       const sentAt = Number(message.client_time || Date.now());
       state.serverOffset = Number(message.server_time) * 1000 - ((sentAt + Date.now()) / 2);
     } else if (message.type === "snapshot" && message.room) {
+      recordActionAcknowledgement(message.action_id, { ok: true });
       if (Number(message.room.version) >= state.lastVersion) receiveSnapshot(message.room);
     } else if (message.type === "room.ended") {
       returnToLobby(message.message || "The host ended this room.");
     } else if (message.type === "rtc.signal") {
       if (window.AfterglowMedia) window.AfterglowMedia.handleSignal(message);
     } else if (message.type === "error") {
+      recordActionAcknowledgement(message.action_id, { ok: false, message: message.message || "The room rejected that change." });
       showToast(message.message || "That room action did not go through.");
+      if (message.action_id && message.action_id === state.waitingMovieActionId && ui.videoDialog.open) {
+        const error = document.getElementById("videoFormError");
+        error.textContent = message.message || "The room rejected that stream.";
+        error.classList.remove("hidden");
+      }
       if (window.AfterglowMedia) window.AfterglowMedia.handleServerError(message.message || "");
     }
   });
@@ -476,6 +857,7 @@ function connectToRoom(code) {
     ui.syncIndicator.classList.add("is-waiting");
     window.clearTimeout(state.reconnectTimer);
     state.reconnectTimer = window.setTimeout(function () {
+      state.reconnectTimer = null;
       if (state.room) connectToRoom(state.room.code);
     }, 1600);
   });
@@ -485,6 +867,11 @@ function connectToRoom(code) {
 }
 
 function receiveSnapshot(room) {
+  room = {
+    ...room,
+    current_movie: room.current_movie && LEGACY_DEMO_VIDEO_IDS.includes(room.current_movie.id) ?
+      { ...room.current_movie, ...DEMO_SAMPLE_VIDEO } : room.current_movie,
+  };
   const previousPlayback = state.room && state.room.playback;
   const nextPlayback = room.playback;
   if (nextPlayback && (!previousPlayback ||
@@ -496,7 +883,7 @@ function receiveSnapshot(room) {
   state.room = room;
   state.lastVersion = Number(room.version || 0);
   renderRoom();
-  if (window.AfterglowMedia) window.AfterglowMedia.syncRoom(room);
+  if (window.AfterglowMedia) window.AfterglowMedia.syncRoom(state.room);
   if (ui.lobby.classList.contains("hidden")) loadCatalogDebounced(80);
 }
 
@@ -507,8 +894,68 @@ function sendAction(type, payload) {
   }
   state.actionCounter += 1;
   const actionId = state.userId.slice(0, 6) + "-" + Date.now().toString(36) + "-" + state.actionCounter;
-  state.socket.send(JSON.stringify({ type: type, action_id: actionId, ...(payload || {}) }));
-  return true;
+  try {
+    state.socket.send(JSON.stringify({ type: type, action_id: actionId, ...(payload || {}) }));
+    return actionId;
+  } catch (_) {
+    showToast("Room is reconnecting. Try that again in a moment.");
+    return false;
+  }
+}
+
+function recordActionAcknowledgement(actionId, result) {
+  if (!actionId) return;
+  state.actionAcknowledgements.set(String(actionId), result);
+  while (state.actionAcknowledgements.size > 64) {
+    state.actionAcknowledgements.delete(state.actionAcknowledgements.keys().next().value);
+  }
+}
+
+function waitForActionAcknowledgement(actionId, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise(function (resolve) {
+    function checkAcknowledgement() {
+      const result = state.actionAcknowledgements.get(actionId);
+      if (result) {
+        state.actionAcknowledgements.delete(actionId);
+        resolve(result);
+        return;
+      }
+      if (Date.now() >= deadline) {
+        resolve({ ok: false, message: "The room did not confirm the stream change. Please try again." });
+        return;
+      }
+      window.setTimeout(checkAcknowledgement, 100);
+    }
+    checkAcknowledgement();
+  });
+}
+
+function waitForRoomSocket(timeoutMs) {
+  const roomCode = state.room && state.room.code;
+  if (!roomCode) return Promise.resolve(false);
+  const deadline = Date.now() + timeoutMs;
+  return new Promise(function (resolve) {
+    function checkConnection() {
+      if (!state.room || state.room.code !== roomCode) {
+        resolve(false);
+        return;
+      }
+      if (state.socket && state.socket.readyState === WebSocket.OPEN) {
+        resolve(true);
+        return;
+      }
+      if ((!state.socket || state.socket.readyState === WebSocket.CLOSED) && state.reconnectTimer === null) {
+        try { connectToRoom(roomCode); } catch (_) { /* Try again until the connection timeout. */ }
+      }
+      if (Date.now() >= deadline) {
+        resolve(false);
+        return;
+      }
+      window.setTimeout(checkConnection, 100);
+    }
+    checkConnection();
+  });
 }
 
 function movieSource(movie) {
@@ -690,7 +1137,7 @@ function renderRoom() {
   document.getElementById("roomCodeLabel").textContent = state.room.code;
   document.getElementById("roomFooterCode").textContent = state.room.code;
   const onlineMembers = (state.room.members || []).filter(function (member) { return member.connected; });
-  document.getElementById("memberCount").textContent = onlineMembers.length + (onlineMembers.length === 1 ? " here" : " here");
+  document.getElementById("memberCount").textContent = onlineMembers.length + (onlineMembers.length === 1 ? " person here" : " people here");
   document.getElementById("peopleTabCount").textContent = String(onlineMembers.length);
   document.getElementById("hostPill").classList.toggle("hidden", !roomIsHost());
   document.getElementById("endRoomButton").classList.toggle("hidden", !roomIsHost());
@@ -714,19 +1161,15 @@ function renderCurrentMovie() {
   const title = movie ? movie.title : "The seats are yours.";
   document.getElementById("screeningTitle").textContent = title;
   document.getElementById("screeningSubtitle").textContent = movie ?
-    (movie.source_label || "Shared video") + (kind === "browser" ? " · the page is shared by URL." : " · each browser keeps its own stream in sync.") :
+    (movie.source_label || "Shared video") + (kind === "browser" ? " · the page is shared by URL." : " · the video streams from its source; the room shares playback timing.") :
     "Choose a film, then gather everyone around the same moment.";
   document.getElementById("queueNowTitle").textContent = movie ? movie.title : "Nothing is playing yet";
   document.getElementById("queueNowNote").textContent = movie ?
     (movie.year ? String(movie.year) + " · " : "") + (movie.source_label || "Loaded for the room") :
     "Choose a film or load a video link.";
-  document.getElementById("movieDescription").textContent = movie ?
-    movie.overview || "A shared screen, a shared clock, and a little room to react." :
-    "A shared screen, a shared clock, and a little room to react.";
-
   ui.emptyScreen.classList.toggle("has-video", hasSource);
   ui.videoError.classList.add("hidden");
-  document.getElementById("sampleLabel").classList.toggle("hidden", !(movie && movie.source_label === "CC0 sample clip"));
+  document.getElementById("sampleLabel").classList.toggle("hidden", !(movie && (movie.id === DEMO_SAMPLE_VIDEO.id || LEGACY_DEMO_VIDEO_IDS.includes(movie.id))));
   ui.playPauseButton.disabled = !hasSource || !playerKind || !roomIsHost();
   ui.seek.disabled = !hasSource || !playerKind || !roomIsHost();
   document.getElementById("changeVideoButton").disabled = !roomIsHost();
@@ -976,7 +1419,11 @@ function renderChat() {
   const shouldStick = ui.chatMessages.scrollHeight - ui.chatMessages.scrollTop - ui.chatMessages.clientHeight < 45;
   ui.chatMessages.replaceChildren();
   if (!messages.length) {
-    const prompt = makeElement("div", "chat-context chat-first-message", "The room is quiet. Start the conversation with a tiny signal.");
+    const prompt = makeElement("div", "chat-first-message");
+    const icon = makeElement("span", "chat-empty-icon");
+    icon.append(window.AfterglowIcons.create("messages", 19));
+    prompt.append(icon, makeElement("strong", "chat-empty-title", "The opening credits haven't rolled."));
+    prompt.append(makeElement("span", "chat-empty-copy", "Say hello, share a film pick, or send a sticker to get the conversation started."));
     ui.chatMessages.append(prompt);
   }
   messages.forEach(function (message) {
@@ -990,7 +1437,9 @@ function renderChat() {
     const timeElement = makeElement("time", "", timestamp);
     head.append(timeElement);
     content.append(head);
-    content.append(makeElement("p", "chat-message-text", message.text || ""));
+    const sticker = !message.reaction && decodeStickerMessage(message.text);
+    if (sticker) content.append(createStickerElement(sticker));
+    else content.append(makeElement("p", "chat-message-text", message.text || ""));
     row.append(avatar, content);
     ui.chatMessages.append(row);
   });
@@ -1037,7 +1486,7 @@ function renderPoll() {
   ui.pollCard.replaceChildren();
   ui.pollCard.append(makeElement("h3", "", poll.title));
   const totalVotes = Object.keys(poll.votes || {}).length;
-  ui.pollCard.append(makeElement("p", "poll-subline", poll.closed ? "Poll closed · " + totalVotes + (totalVotes === 1 ? " vote" : " votes") : "Pick the next feature presentation."));
+  ui.pollCard.append(makeElement("p", "poll-subline", poll.closed ? "Poll closed · " + totalVotes + (totalVotes === 1 ? " vote" : " votes") : "Vote for the next movie."));
   (poll.options || []).forEach(function (option) {
     const voteButton = makeElement("button", "poll-option" + (poll.votes && poll.votes[state.userId] === option.id ? " is-voted" : ""));
     voteButton.type = "button";
@@ -1126,7 +1575,7 @@ function openVideoDialog(movie, requestedMode) {
     return;
   }
   const selected = movie || state.room.current_movie || {};
-  state.pendingMovie = movie || state.room.current_movie || null;
+  state.videoDialogMovie = movie || state.room.current_movie || null;
   ui.videoTitle.value = selected.title || "";
   ui.videoUrl.value = selected.source_url || "";
   ui.videoFile.value = "";
@@ -1145,10 +1594,44 @@ function openVideoDialog(movie, requestedMode) {
 }
 
 async function submitVideo() {
+  const button = ui.submitVideoButton;
+  const status = document.getElementById("videoSubmitStatus");
+  const error = document.getElementById("videoFormError");
+  if (button.disabled) return;
+  button.disabled = true;
+  button.dataset.idleLabel = button.dataset.idleLabel || button.firstChild.textContent;
+  button.firstChild.textContent = "Loading into the room… ";
+  button.setAttribute("aria-busy", "true");
+  status.textContent = "Checking the stream details…";
+  status.classList.remove("hidden");
+  error.classList.add("hidden");
+  try {
+    await submitVideoForm();
+  } catch (submissionError) {
+    console.error("Unable to load the stream into the room", submissionError);
+    error.textContent = submissionError && submissionError.message ? submissionError.message : "The stream could not be loaded. Please try again.";
+    error.classList.remove("hidden");
+  } finally {
+    button.disabled = false;
+    button.firstChild.textContent = button.dataset.idleLabel;
+    button.removeAttribute("aria-busy");
+    if (status.textContent === "Checking the stream details…") status.classList.add("hidden");
+  }
+}
+
+async function submitVideoForm() {
   const title = ui.videoTitle.value.trim();
   const sourceUrl = ui.videoUrl.value.trim();
   const error = document.getElementById("videoFormError");
+  const status = document.getElementById("videoSubmitStatus");
   const kind = state.sourceMode;
+  error.classList.add("hidden");
+  status.classList.add("hidden");
+  if (!roomIsHost()) {
+    error.textContent = "Only the room host can change the stream.";
+    error.classList.remove("hidden");
+    return;
+  }
   let parsed;
   try { parsed = new URL(sourceUrl); } catch (_) { parsed = null; }
   if (!title) {
@@ -1174,7 +1657,6 @@ async function submitVideo() {
     }
     ui.uploadProgress.classList.remove("hidden");
     ui.uploadProgressLabel.textContent = "Uploading " + file.name + "…";
-    document.getElementById("submitVideoButton").disabled = true;
     try {
       const form = new FormData();
       form.append("file", file);
@@ -1188,7 +1670,6 @@ async function submitVideo() {
       return;
     } finally {
       ui.uploadProgress.classList.add("hidden");
-      document.getElementById("submitVideoButton").disabled = false;
     }
   } else {
     if (!parsed || !["https:", "http:"].includes(parsed.protocol)) {
@@ -1221,7 +1702,7 @@ async function submitVideo() {
     }
   }
 
-  const selected = state.pendingMovie || {};
+  const selected = state.videoDialogMovie || {};
   const sourceLabels = {
     url: "Direct video URL",
     youtube: "YouTube player",
@@ -1239,7 +1720,35 @@ async function submitVideo() {
     runtime_seconds: null,
   };
   state.pendingMovie = null;
-  if (sendAction("movie.select", { movie: movie })) ui.videoDialog.close();
+  status.textContent = "Connecting to the room…";
+  status.classList.remove("hidden");
+  const connected = await waitForRoomSocket(10000);
+  status.classList.add("hidden");
+  if (!connected) {
+    error.textContent = "The room is still reconnecting. Try again once it is live.";
+    error.classList.remove("hidden");
+    return;
+  }
+  const actionId = sendAction("movie.select", { movie: movie });
+  if (!actionId) {
+    error.textContent = "Couldn't reach the room. Your stream details are still here—please try again.";
+    error.classList.remove("hidden");
+    return;
+  }
+  state.waitingMovieActionId = actionId;
+  status.textContent = "Waiting for the room to confirm…";
+  status.classList.remove("hidden");
+  const acknowledgement = await waitForActionAcknowledgement(actionId, 8000);
+  state.waitingMovieActionId = null;
+  status.classList.add("hidden");
+  if (!ui.videoDialog.open) return;
+  if (acknowledgement.ok) {
+    state.videoDialogMovie = null;
+    ui.videoDialog.close();
+  } else {
+    error.textContent = acknowledgement.message;
+    error.classList.remove("hidden");
+  }
 }
 
 function inviteUrl() {
@@ -1250,9 +1759,19 @@ async function copyInvite() {
   if (!state.room) return;
   try {
     await navigator.clipboard.writeText(inviteUrl());
-    showToast("Room invite copied. Send it to the group chat.");
+    showToast("Invite link copied. Share it with your friends.");
   } catch (_) {
     window.prompt("Copy this room invite:", inviteUrl());
+  }
+}
+
+async function copyRoomCode() {
+  if (!state.room) return;
+  try {
+    await navigator.clipboard.writeText(state.room.code);
+    showToast("Room code copied. Send it to your friends.");
+  } catch (_) {
+    window.prompt("Copy this room code:", state.room.code);
   }
 }
 
@@ -1298,10 +1817,6 @@ function returnToLobby(message) {
   if (message) showToast(message);
 }
 
-function formatClock() {
-  return new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
 document.getElementById("createRoomButton").addEventListener("click", function () { createRoom(false); });
 document.getElementById("tryDemoButton").addEventListener("click", function () { createRoom(true); });
 document.getElementById("navDiscover").addEventListener("click", function () { showLobbyAndBrowse(); });
@@ -1342,7 +1857,7 @@ document.getElementById("leaveRoomButton").addEventListener("click", function ()
   if (state.room) returnToLobby("You left the room.");
 });
 document.getElementById("copyInviteButton").addEventListener("click", copyInvite);
-document.getElementById("copyInviteSmall").addEventListener("click", copyInvite);
+document.getElementById("copyRoomCodeButton").addEventListener("click", copyRoomCode);
 document.getElementById("peopleInviteButton").addEventListener("click", copyInvite);
 document.getElementById("queueAddButton").addEventListener("click", showLobbyAndBrowse);
 document.getElementById("findFilmButton").addEventListener("click", showLobbyAndBrowse);
@@ -1354,11 +1869,51 @@ document.querySelectorAll(".reaction-tray button").forEach(function (button) {
 });
 ui.chatForm.addEventListener("submit", function (event) {
   event.preventDefault();
-  const text = ui.chatInput.value.trim();
-  if (text && sendAction("chat", { text: text })) ui.chatInput.value = "";
+  const text = replaceKnownShortcodes(ui.chatInput.value.trim());
+  if (text && sendAction("chat", { text: text })) {
+    ui.chatInput.value = "";
+    hideEmojiAutocomplete();
+  }
+});
+document.getElementById("chatPickerToggle").addEventListener("click", function () {
+  if (ui.chatPicker.classList.contains("hidden")) openChatPicker();
+  else closeChatPicker();
+});
+document.getElementById("closeChatPicker").addEventListener("click", closeChatPicker);
+document.querySelectorAll("[data-picker-tab]").forEach(function (button) {
+  button.addEventListener("click", function () { setPickerTab(button.dataset.pickerTab); });
+});
+ui.emojiSearch.addEventListener("input", function () { renderEmojiPicker(ui.emojiSearch.value); });
+ui.klipyStickerSearch.addEventListener("input", function () { scheduleKlipyStickerSearch(ui.klipyStickerSearch.value); });
+document.querySelectorAll("[data-sticker-query]").forEach(function (button) {
+  button.addEventListener("click", function () {
+    ui.klipyStickerSearch.value = button.dataset.stickerQuery || "";
+    scheduleKlipyStickerSearch(ui.klipyStickerSearch.value);
+  });
+});
+ui.chatInput.addEventListener("input", function () {
+  if (!ui.chatPicker.classList.contains("hidden")) closeChatPicker();
+  renderEmojiSuggestions();
+});
+ui.chatInput.addEventListener("keydown", function (event) {
+  if (ui.emojiAutocomplete.classList.contains("hidden")) return;
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    const direction = event.key === "ArrowDown" ? 1 : -1;
+    state.emojiSuggestionIndex = (state.emojiSuggestionIndex + direction + state.emojiSuggestions.length) % state.emojiSuggestions.length;
+    renderEmojiSuggestions();
+  } else if (event.key === "Enter" && state.emojiSuggestions.length) {
+    event.preventDefault();
+    selectEmojiSuggestion(state.emojiSuggestionIndex);
+  } else if (event.key === "Escape") {
+    hideEmojiAutocomplete();
+  }
+});
+document.addEventListener("pointerdown", function (event) {
+  if (!ui.chatPicker.classList.contains("hidden") && !ui.chatPicker.contains(event.target) && event.target.id !== "chatPickerToggle") closeChatPicker(false);
+  if (!ui.emojiAutocomplete.classList.contains("hidden") && !ui.emojiAutocomplete.contains(event.target) && event.target !== ui.chatInput) hideEmojiAutocomplete();
 });
 ui.videoForm.addEventListener("submit", function (event) { event.preventDefault(); submitVideo(); });
-document.getElementById("submitVideoButton").addEventListener("click", submitVideo);
 document.getElementById("loadVideoButton").addEventListener("click", function () { openVideoDialog(null); });
 document.getElementById("changeVideoButton").addEventListener("click", function () { openVideoDialog(null); });
 document.getElementById("chooseSourceButton").addEventListener("click", function () { openVideoDialog(null); });
@@ -1466,7 +2021,6 @@ function loadCatalogDebounced(delay) {
 }
 
 window.setInterval(function () {
-  document.getElementById("roomClock").textContent = formatClock();
   if (!state.room || !movieSource(state.room.current_movie)) return;
   if (state.activeKind === "browser") return;
   const isYouTube = state.activeKind === "youtube";
@@ -1528,6 +2082,10 @@ async function boot() {
   try {
     const session = await api("/api/session");
     applySessionUser(session.user);
+    try {
+      const clientConfig = await api("/api/client-config");
+      state.klipyAppKey = String(clientConfig.klipy_app_key || "");
+    } catch (_) { state.klipyAppKey = ""; }
     if (window.AfterglowMedia) await window.AfterglowMedia.refreshConfig();
   } catch (error) {
     showToast("The app could not start a secure session: " + error.message);

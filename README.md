@@ -22,20 +22,33 @@ The app works without an API key and shows 24 hand-picked films (18 at a time). 
 
 The key stays in the Python server and is not sent to the browser. The local .env file is private and excluded from version control. The free OMDb key is limited to 1,000 requests per day. The app caches movie details and searches in SQLite for 12 hours to reduce repeat requests. Its browse page uses a curated set because OMDb provides title search rather than a trending/discovery feed. See [OMDb's API page](https://www.omdbapi.com/) and [key request page](https://www.omdbapi.com/apikey.aspx) for current details.
 
+### Live stickers from KLIPY
+
+1. Create a KLIPY app in the [KLIPY Partner Panel](https://partner.klipy.com/) and copy its app key.
+2. Add `KLIPY_APP_KEY=your_key_here` to your private `.env` file, or add `KLIPY_APP_KEY` in your host's environment settings (for example, Render). Do not paste the key into chat or commit it.
+3. Restart the local server or redeploy. In a room, open the smile button, choose **Stickers**, and search KLIPY or tap a movie-night search suggestion.
+
+KLIPY's browser API requires the app key in client requests, so it is visible in the browser's network tools; it is not a password or a server secret. Use any domain restrictions available in the KLIPY Partner Panel. Stickers load directly from KLIPY and show provider credit in the picker and chat. They are not copied into this app's storage. See [KLIPY's sticker API documentation](https://docs.klipy.com/stickers-api) and [API terms](https://klipy.com/support/api-terms) for current limits and usage rules.
+
+KLIPY testing keys are limited to 100 API requests per hour. Request production access through the Partner Panel if the project needs a higher limit.
+
 YouTube playback uses Google's embedded player rather than the YouTube search API, so a YouTube API key is not needed for pasted links. Camera and screen sharing use browser media permissions and WebRTC. The local demo works without a paid service. For the combined LiveKit Cloud, Upstash Redis, and Cloudflare R2 setup, follow [the external services guide](docs/EXTERNAL_SERVICES_SETUP.md). The app never pretends those services are active when they are not configured.
 
 OMDb attribution appears below the catalog when provider data is in use.
 
 ## How to try it
 
-1. Choose **Try the sample reel** to open a room with a short CC0 video clip, or choose **Start a room** to create an empty screening room.
+1. Choose **Try sample** to open a room with the sample YouTube video, or choose **Start a room** to create an empty screening room.
 2. Use **Invite** to copy the room URL. A second browser or device can join with the link or six-character code.
 3. Open **Choose a stream** to add a YouTube link, a direct MP4/WebM URL, upload a video, or load a webpage that permits embedding.
 4. Try **Share screen** for a live tab/window/desktop or **Join video chat** for camera and microphone. Grant browser permission when asked. These real-time features require HTTPS or localhost.
 5. The host controls supported play, pause, and seek. The room also has chat, quick emoji reactions, a shared playlist, polls, and host transfer.
 6. Open the profile button to keep the generated guest identity or create/sign in to an account. Accounts are optional for joining and are stored on this server.
+7. In chat, type a colon and a few letters (for example, `:po`) to get emoji suggestions, or open the smile button. The **Stickers** tab searches KLIPY's live sticker library; everyone in the room loads each shared sticker from KLIPY.
 
-The catalog and the movie stream are separate. OMDb supplies film metadata and poster links; it does not provide the video stream. The included sample clip is a player demonstration, not a full-length movie. Links to streaming-service pages are not direct video files and will not play in this player. YouTube works through its official embedded player when a video allows embedding. The webpage option is a regular iframe; it is not a cloud-hosted browser. Screen sharing is the fallback for pages that allow the sharer to present them.
+The `Ctrl + K` hint beside Discover search means hold Control and press K to jump to the movie search box.
+
+The catalog and the movie stream are separate. OMDb supplies film metadata and poster links; it does not provide the video stream. The demo uses the sample [YouTube video](https://youtu.be/yVndvvCdvU4?si=L0iOdFUS68nKxjS6) to try synchronized playback. Links to streaming-service pages are not direct video files and will not play in this player. YouTube works through its official embedded player when a video allows embedding. The webpage option is a regular iframe; it is not a cloud-hosted browser. Screen sharing is the fallback for pages that allow the sharer to present them.
 
 ## Technology and flow
 
@@ -90,4 +103,3 @@ OMDb says it is not affiliated with IMDb. Its API is described as noncommercial 
 8. Show the performance notes for the local measurement method, results, and limits.
 
 This is a working interview/demo project, not a finished internet-scale service. Run one Uvicorn worker for the no-service local setup. Optional Redis coordinates multiple workers on one machine when they share the same local SQLite file; multi-host deployment still needs a shared transactional database. Configure and verify a TURN/SFU service and object storage before relying on group calls or uploads over the public internet. The 14.09 ms p95 result is historical control-message data and has not been rerun after the authentication and Redis changes.
-
