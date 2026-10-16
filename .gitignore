@@ -1,0 +1,10 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+watch_party.sqlite3
+watch_party.sqlite3-shm
+watch_party.sqlite3-wal
+uploads/
+*.log

@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#120f18">
+    <meta name="description" content="A little cinema club for watching together, wherever you are.">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <title>Afterglow — watch together</title>
+    <link rel="stylesheet" href="/static/styles.css?v=professional-color-2">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Main navigation">
+        <a class="brand" href="/" aria-label="Afterglow home">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="brand-name">afterglow<span>®</span></span>
+        </a>
+
+        <p class="nav-label">YOUR CINEMA</p>
+        <nav class="primary-nav">
+          <button class="nav-link is-active" id="navDiscover" type="button">
+            <span class="nav-icon" aria-hidden="true">✳</span><span>Discover</span>
+          </button>
+          <button class="nav-link" id="navRoom" type="button">
+            <span class="nav-icon" aria-hidden="true">◉</span><span>Watch room</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section-head">
+          <p class="nav-label">IN THE LOBBY</p>
+          <span class="online-dot" aria-label="Live"></span>
+        </div>
+        <div class="lobby-note">
+          <div class="lobby-orbit" aria-hidden="true">✦</div>
+          <div>
+            <strong>Good films travel</strong>
+            <span>Start a room, send the code.</span>
+          </div>
+        </div>
+
+        <div class="sidebar-spacer"></div>
+        <button class="profile-chip" id="profileButton" type="button">
+          <span class="avatar avatar-you" id="userAvatar">Y</span>
+          <span class="profile-meta"><strong id="userNameLabel">You</strong><small>Set your name</small></span>
+          <span class="profile-more" aria-hidden="true">···</span>
+        </button>
+        <div class="sidebar-footnote"><span class="footnote-star">✳</span> MADE FOR THE GROUP CHAT</div>
+      </aside>
+
+      <main class="main-view lobby-view" id="lobbyView">
+        <header class="topbar">
+          <div class="breadcrumb"><span>AFTERGLOW</span><span class="breadcrumb-slash">/</span><strong>DISCOVER</strong></div>
+          <div class="topbar-actions">
+            <span class="network-note"><span class="online-dot"></span> room sync is ready</span>
+            <button class="icon-button" id="topProfileButton" type="button" aria-label="Change your display name" title="Change your display name">◌</button>
+          </div>
+        </header>
+
+        <div class="lobby-content">
+          <section class="hero">
+            <div class="hero-copy">
+              <div class="eyebrow"><span class="eyebrow-line"></span> THE DISTANCE IS A SMALL DETAIL</div>
+              <h1>Same scene.<br><em>Same moment.</em></h1>
+              <p class="hero-description">Pick the film, pull your people in, and let the room keep time. Your next movie night is one link away.</p>
+              <div class="hero-actions">
+                <button class="button button-primary" id="createRoomButton" type="button">
+                  <span aria-hidden="true">＋</span> Start a room
+                </button>
+                <button class="button button-quiet" id="tryDemoButton" type="button">
+                  <span class="play-small" aria-hidden="true">▶</span> Try the sample reel
+                </button>
+              </div>
+              <form class="join-form" id="joinForm">
+                <label for="roomCodeInput">ALREADY HAVE A ROOM CODE?</label>
+                <div class="join-input-row">
+                  <input id="roomCodeInput" name="code" autocomplete="off" maxlength="6" placeholder="e.g. N7Q4KD" aria-label="Room code">
+                  <button class="button button-outline" type="submit">Join room <span aria-hidden="true">↗</span></button>
+                </div>
+              </form>
+            </div>
+            <div class="hero-art" aria-label="Illustration of a cinema screen and shared film night">
+              <div class="art-ambient art-ambient-one"></div>
+              <div class="art-ambient art-ambient-two"></div>
+              <div class="hero-ticket">
+                <div class="ticket-topline"><span>FRIDAY / 08:30 PM</span><span>NO. 014</span></div>
+                <div class="ticket-cinema">
+                  <div class="screen-glow"></div>
+                  <div class="screen-curtain"></div>
+                  <div class="screen-orb"></div>
+                  <div class="screen-horizon"></div>
+                </div>
+                <div class="ticket-title">A little<br>afterglow.</div>
+                <div class="ticket-bottom"><span>ADMIT EVERYONE</span><span>✳ ✳ ✳</span></div>
+              </div>
+              <div class="art-caption"><span class="caption-dot"></span> THE GROUP IS THE GOOD PART</div>
+              <span class="art-star art-star-one" aria-hidden="true">✳</span>
+              <span class="art-star art-star-two" aria-hidden="true">✦</span>
+            </div>
+            <div class="hero-index" aria-hidden="true">01 <span>—</span> 03</div>
+          </section>
+
+          <section class="discovery-section" aria-labelledby="discoverTitle">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow"><span class="eyebrow-line"></span> MAKE THE FIRST PICK</div>
+                <h2 id="discoverTitle">Tonight's <em>shortlist.</em></h2>
+              </div>
+              <p class="section-aside">Good options. No endless scrolling.<br>The group gets the last word.</p>
+            </div>
+
+            <div class="catalog-tools">
+              <label class="search-box" for="movieSearch">
+                <span aria-hidden="true">⌕</span>
+                <input id="movieSearch" type="search" placeholder="Find a title, genre, or one you've almost spelled…" autocomplete="off">
+                <kbd>Ctrl K</kbd>
+              </label>
+              <label class="select-wrap">
+                <span class="sr-only">Filter by genre</span>
+                <select id="genreFilter">
+                  <option value="">Every genre</option>
+                  <option>Action</option><option>Adventure</option><option>Animation</option><option>Comedy</option>
+                  <option>Crime</option><option>Documentary</option><option>Drama</option><option>Family</option>
+                  <option>Fantasy</option><option>History</option><option>Horror</option><option>Music</option>
+                  <option>Mystery</option><option>Romance</option><option>Science fiction</option><option>TV movie</option>
+                  <option>Thriller</option><option>War</option><option>Western</option>
+                </select>
+              </label>
+              <label class="select-wrap">
+                <span class="sr-only">Sort and recommend films</span>
+                <select id="categoryFilter">
+                  <option value="room">Best fit for the room</option>
+                  <option value="popular">Popular</option>
+                  <option value="new">Newer first</option>
+                  <option value="top">Highest rated</option>
+                </select>
+              </label>
+            </div>
+
+            <p class="catalog-source-note">Room-fit picks learn from your poll votes. Highest rated uses OMDb’s IMDb score when available; open IMDb and Moctale for more on each film.</p>
+
+            <div class="catalog-status" id="catalogStatus" aria-live="polite">
+              <span class="catalog-status-dot"></span><span>Putting together a few good options…</span>
+            </div>
+            <div class="movie-grid" id="movieGrid" aria-live="polite"></div>
+            <p class="catalog-attribution hidden" id="catalogAttribution"></p>
+          </section>
+
+          <footer class="lobby-footer">
+            <span>NO ALGORITHM CAN REPLACE “YOU HAVE TO SEE THIS.”</span>
+            <span>AFTERGLOW <i>·</i> WATCH TOGETHER</span>
+          </footer>
+        </div>
+      </main>
+
+      <main class="main-view room-view hidden" id="roomView">
+        <header class="room-topbar">
+          <div class="room-heading">
+            <button class="back-button" id="backToDiscover" type="button" aria-label="Back to discover">←</button>
+            <div>
+              <div class="breadcrumb"><span>AFTERGLOW</span><span class="breadcrumb-slash">/</span><strong>THE SCREENING ROOM</strong></div>
+              <div class="room-name-row"><h1 id="roomTitle">A little Friday cinema club</h1><span class="host-pill hidden" id="hostPill">HOST</span></div>
+            </div>
+          </div>
+          <div class="room-tools">
+            <div class="room-code-chip"><span>ROOM</span><strong id="roomCodeLabel">——</strong></div>
+            <button class="button button-outline button-invite" id="copyInviteButton" type="button"><span aria-hidden="true">↗</span> Invite</button>
+            <button class="button button-danger button-room-exit hidden" id="endRoomButton" type="button" title="End this room for everyone">End room</button>
+            <button class="button button-quiet button-room-exit hidden" id="leaveRoomButton" type="button">Leave room</button>
+            <div class="room-live"><span class="online-dot"></span><span id="memberCount">0 here</span></div>
+          </div>
+        </header>
+
+        <div class="room-layout">
+          <aside class="queue-panel panel" aria-label="Shared playlist and poll">
+            <div class="panel-heading">
+              <div><div class="eyebrow eyebrow-small">THE RUNNING ORDER</div><h2>Tonight's queue<span class="count-pill" id="queueCount">0</span></h2></div>
+              <button class="small-icon-button" id="queueAddButton" type="button" aria-label="Find a film to add" title="Find a film to add">＋</button>
+            </div>
+            <div class="queue-now" id="queueNow">
+              <span class="queue-now-label"><span class="live-pip"></span> ON SCREEN</span>
+              <div class="queue-now-title" id="queueNowTitle">Nothing is playing yet</div>
+              <div class="queue-now-note" id="queueNowNote">Choose a film or load a video link.</div>
+            </div>
+            <div class="recommendation-note" id="recommendationNote">
+              <span aria-hidden="true">✳</span><span>Room picks learn from the group's poll votes.</span>
+            </div>
+            <div class="queue-list" id="playlistList"></div>
+            <div class="queue-empty" id="queueEmpty">
+              <div class="empty-orbit" aria-hidden="true">✦</div>
+              <strong>Leave room for a wild card.</strong>
+              <span>Add films as they come up in the chat.</span>
+              <button class="text-button" id="findFilmButton" type="button">Browse the shortlist <span aria-hidden="true">↗</span></button>
+            </div>
+            <button class="poll-launch" id="createPollButton" type="button" disabled>
+              <span class="poll-icon" aria-hidden="true">◉</span>
+              <span><strong>Let the room decide</strong><small>Start a quick film poll</small></span>
+              <span class="poll-arrow" aria-hidden="true">↗</span>
+            </button>
+            <section class="poll-card hidden" id="pollCard" aria-live="polite"></section>
+            <div class="queue-footnote">A SHARED LIST, NOT A COMMITMENT</div>
+          </aside>
+
+          <section class="screening-column" aria-label="Shared video player">
+            <div class="screening-intro">
+              <div class="screening-film-meta">
+                <span class="screening-eyebrow"><span class="live-pip"></span> THE ROOM IS OPEN</span>
+                <h2 id="screeningTitle">The seats are yours.</h2>
+                <p id="screeningSubtitle">Choose a film, then gather everyone around the same moment.</p>
+              </div>
+              <div class="sync-indicator" id="syncIndicator"><span class="sync-icon" aria-hidden="true">⌁</span><span id="syncLabel">Waiting for a film</span></div>
+            </div>
+
+            <div class="video-frame" id="videoFrame">
+              <video id="sharedVideo" playsinline preload="metadata" aria-label="Shared screening video"></video>
+              <div class="media-embed hidden" id="youtubeContainer" aria-label="YouTube player"><div id="youtubePlayerMount"></div></div>
+              <iframe class="media-embed browser-preview hidden" id="browserPreview" title="Shared browser page" sandbox="allow-scripts allow-forms allow-presentation" allow="fullscreen; autoplay" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+              <video class="screen-share-video hidden" id="screenShareVideo" autoplay playsinline aria-label="Live shared screen"></video>
+              <div class="screen-share-badge hidden" id="screenShareBadge"><span class="live-pip"></span> LIVE SCREEN SHARE <span id="screenSharerName"></span></div>
+              <div class="video-shade"></div>
+              <div class="empty-screen" id="emptyScreen">
+                <div class="empty-screen-rings"><span></span><span></span><span></span></div>
+                <div class="empty-screen-content">
+                  <span class="screen-kicker">THE SCREEN IS YOURS</span>
+                  <div class="screen-quote">Every great movie<br>night starts somewhere.</div>
+                  <p>Bring a YouTube link, a video file, a webpage, or a live screen share.</p>
+                  <button class="button button-primary" id="loadVideoButton" type="button"><span aria-hidden="true">＋</span> Choose a film</button>
+                </div>
+                <div class="projector-beam" aria-hidden="true"></div>
+                <div class="seat-silhouette seat-left" aria-hidden="true"></div>
+                <div class="seat-silhouette seat-right" aria-hidden="true"></div>
+              </div>
+              <div class="sample-label hidden" id="sampleLabel">SAMPLE REEL <span>·</span> CC0</div>
+              <div class="video-error hidden" id="videoError" role="status">
+                <span class="error-mark">!</span>
+                <div><strong>This source couldn't be played here.</strong><span>Check the link, embedding rules, and source availability.</span></div>
+              </div>
+              <button class="resume-overlay hidden" id="resumeVideoButton" type="button"><span aria-hidden="true">▶</span> Click to sync with the room</button>
+              <button class="fullscreen-button" id="fullscreenButton" type="button" aria-label="Enter fullscreen" title="Enter fullscreen">⛶</button>
+            </div>
+
+            <div class="player-controls" id="playerControls">
+              <button class="transport-button" id="playPauseButton" type="button" aria-label="Play shared video" disabled><span id="playPauseIcon" aria-hidden="true">▶</span></button>
+              <span class="time-label" id="timeCurrent">0:00</span>
+              <label class="sr-only" for="seekSlider">Seek shared video</label>
+              <input id="seekSlider" class="seek-slider" type="range" min="0" max="100" step="0.1" value="0" disabled>
+              <span class="time-label time-total" id="timeTotal">0:00</span>
+              <span class="control-divider"></span>
+              <button class="control-text-button" id="changeVideoButton" type="button">Change film</button>
+              <span class="control-host-note" id="controlHostNote">Only the host steers playback</span>
+            </div>
+
+            <div class="media-toolbar" aria-label="Watch and call options">
+              <button class="media-action-button media-action-primary" id="chooseSourceButton" type="button"><span aria-hidden="true">▣</span> Choose a stream</button>
+              <button class="media-action-button" id="shareScreenButton" type="button"><span aria-hidden="true">▱</span> Share screen</button>
+              <button class="media-action-button hidden" id="stopScreenButton" type="button"><span aria-hidden="true">■</span> Stop sharing</button>
+              <button class="media-action-button" id="videoChatButton" type="button"><span aria-hidden="true">◉</span> Join video chat</button>
+              <button class="media-action-button hidden" id="micToggleButton" type="button" aria-pressed="true">Mic on</button>
+              <button class="media-action-button hidden" id="cameraToggleButton" type="button" aria-pressed="true">Camera on</button>
+              <span class="media-call-status" id="mediaCallStatus">Media stays with its source.</span>
+            </div>
+
+            <div class="stage-caption">
+              <div class="stage-caption-left"><span class="caption-mark">✳</span><span id="movieDescription">A shared screen, a shared clock, and a little room to react.</span></div>
+              <span class="stage-time" id="roomClock"></span>
+            </div>
+            <section class="media-dock hidden" id="mediaDock" aria-label="Video chat participants">
+              <div class="media-dock-heading"><span><span class="live-pip"></span> THE SOFA</span><span id="videoChatCount">0 faces</span></div>
+              <div class="video-tile-grid" id="videoTiles"></div>
+            </section>
+          </section>
+
+          <aside class="social-panel panel" aria-label="Room chat and people">
+            <div class="social-header">
+              <div class="social-tabs" role="tablist" aria-label="Room activity">
+                <button id="chatTab" class="social-tab is-selected" type="button" role="tab" aria-selected="true" aria-controls="chatPane">The chat <span class="tab-unread hidden" id="chatUnread"></span></button>
+                <button id="peopleTab" class="social-tab" type="button" role="tab" aria-selected="false" aria-controls="peoplePane">People <span class="people-count" id="peopleTabCount">0</span></button>
+              </div>
+              <button class="small-icon-button invite-mini" id="copyInviteSmall" type="button" aria-label="Copy room invite" title="Copy invite">↗</button>
+            </div>
+            <section class="chat-pane" id="chatPane" role="tabpanel" aria-labelledby="chatTab">
+              <div class="chat-context"><span class="chat-context-icon">✦</span><span>Say the thing you'd say<br>from the sofa.</span></div>
+              <div class="chat-messages" id="chatMessages" aria-live="polite" aria-relevant="additions text"></div>
+              <div class="reaction-tray" aria-label="Quick reactions">
+                <button type="button" data-emoji="❤️" aria-label="React with heart">❤️</button>
+                <button type="button" data-emoji="😂" aria-label="React with laugh">😂</button>
+                <button type="button" data-emoji="👏" aria-label="React with applause">👏</button>
+                <button type="button" data-emoji="😮" aria-label="React with surprise">😮</button>
+                <button type="button" data-emoji="🍿" aria-label="React with popcorn">🍿</button>
+                <button type="button" data-emoji="✨" aria-label="React with sparkle">✨</button>
+              </div>
+              <form class="chat-compose" id="chatForm">
+                <label class="sr-only" for="chatInput">Write a message to the room</label>
+                <input id="chatInput" maxlength="500" placeholder="Send a little signal…" autocomplete="off">
+                <button type="submit" aria-label="Send message"><span aria-hidden="true">↑</span></button>
+              </form>
+              <p class="chat-footnote">ROOM CHAT <span>·</span> EVERYONE CAN SEE</p>
+            </section>
+            <section class="people-pane hidden" id="peoplePane" role="tabpanel" aria-labelledby="peopleTab">
+              <div class="people-summary">
+                <span class="people-orbit" aria-hidden="true">✧</span>
+                <div><strong id="peopleHeadline">The best seats are together.</strong><span id="peopleSubhead">Invite someone to join the room.</span></div>
+              </div>
+              <div class="member-list" id="memberList"></div>
+              <button class="button button-outline people-invite-button" id="peopleInviteButton" type="button">Invite someone <span aria-hidden="true">↗</span></button>
+              <p class="people-note">HOST CAN PASS THE REMOTE TO ANYONE HERE</p>
+            </section>
+          </aside>
+        </div>
+        <footer class="room-footer"><span>THE BEST PART IS WATCHING TOGETHER.</span><span>AFTERGLOW <i>·</i> ROOM <b id="roomFooterCode">——</b></span></footer>
+      </main>
+    </div>
+
+    <dialog class="modal" id="profileDialog">
+      <form method="dialog" class="modal-card" id="profileForm">
+        <button class="modal-close" id="closeProfileDialogButton" type="button" aria-label="Close">×</button>
+        <div class="eyebrow"><span class="eyebrow-line"></span> YOUR SEAT, YOUR NAME</div>
+        <h2>Who joined <em>the room?</em></h2>
+        <p>Pick a name your friends will recognize. Your guest session works right away.</p>
+        <label for="profileNameInput">DISPLAY NAME</label>
+        <input id="profileNameInput" maxlength="28" autocomplete="nickname" placeholder="e.g. Maya">
+        <button class="button button-primary modal-submit" id="saveProfileButton" type="button">Save my name <span aria-hidden="true">↗</span></button>
+        <div class="account-panel">
+          <div class="eyebrow"><span class="eyebrow-line"></span> OPTIONAL ACCOUNT</div>
+          <p id="accountStatus" class="account-status">Guest session · create an account to keep this identity on another device.</p>
+          <label for="accountUsernameInput">USERNAME</label>
+          <input id="accountUsernameInput" maxlength="24" autocomplete="username" placeholder="e.g. maya_fox">
+          <label for="accountPasswordInput">PASSWORD</label>
+          <input id="accountPasswordInput" type="password" minlength="10" maxlength="128" autocomplete="new-password" placeholder="At least 10 characters">
+          <div class="account-actions" id="accountGuestButtons">
+            <button class="button button-outline" id="registerButton" type="button">Create account</button>
+            <button class="button button-outline" id="loginButton" type="button">Sign in</button>
+          </div>
+          <button class="button button-outline hidden" id="logoutButton" type="button">Sign out</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="videoDialog">
+      <form method="dialog" class="modal-card video-dialog-card" id="videoForm">
+        <button class="modal-close" id="closeVideoDialogButton" type="button" aria-label="Close">×</button>
+        <div class="eyebrow"><span class="eyebrow-line"></span> PUT SOMETHING ON SCREEN</div>
+        <h2 id="videoDialogTitle">Choose a <em>stream.</em></h2>
+        <p id="videoDialogCopy">Pick a source. Every viewer connects to it directly while the room shares only the playback clock.</p>
+        <div class="source-mode-grid" id="sourceModeGrid" role="group" aria-label="Choose a video source">
+          <button class="source-mode is-selected" type="button" data-source-kind="url" aria-pressed="true"><span>↗</span><strong>Video URL</strong><small>MP4 / WebM</small></button>
+          <button class="source-mode" type="button" data-source-kind="youtube" aria-pressed="false"><span>▶</span><strong>YouTube</strong><small>Official embed</small></button>
+          <button class="source-mode" type="button" data-source-kind="file" aria-pressed="false"><span>↑</span><strong>Upload file</strong><small>Up to 500 MB</small></button>
+          <button class="source-mode" type="button" data-source-kind="browser" aria-pressed="false"><span>▱</span><strong>Embedded webpage</strong><small>Iframe · site rules apply</small></button>
+        </div>
+        <label for="filmTitleInput">WHAT ARE WE WATCHING?</label>
+        <input id="filmTitleInput" maxlength="100" placeholder="Movie title">
+        <div id="sourceUrlFields">
+          <label for="videoUrlInput" id="videoUrlLabel">DIRECT VIDEO FILE LINK</label>
+          <input id="videoUrlInput" type="url" placeholder="https://example.com/your-film.mp4" inputmode="url">
+        </div>
+        <div class="upload-fields hidden" id="sourceFileFields">
+          <label for="videoFileInput">VIDEO FILE (MP4 OR WEBM)</label>
+          <input id="videoFileInput" type="file" accept="video/mp4,video/webm,.mp4,.webm">
+          <div class="upload-progress hidden" id="uploadProgress" role="status"><span></span><strong id="uploadProgressLabel">Uploading video…</strong></div>
+        </div>
+        <span class="field-hint" id="videoDialogHint">The room shares the timestamp, not the movie file. Use media you have permission to share. Browser pages only work when their site allows embedding.</span>
+        <p class="form-error hidden" id="videoFormError" role="alert"></p>
+        <button class="button button-primary modal-submit" id="submitVideoButton" type="button">Load into the room <span aria-hidden="true">↗</span></button>
+      </form>
+    </dialog>
+
+    <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+    <script src="/static/media.js?v=auth-media-1" defer></script>
+    <script src="/static/app.js?v=auth-media-1" defer></script>
+  </body>
+</html>
