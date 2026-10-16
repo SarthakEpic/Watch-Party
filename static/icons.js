@@ -11,6 +11,7 @@
     play: [["path", { d: "m8 5 12 7-12 7z" }]],
     clapperboard: [["path", { d: "M3 8h18v13H3zM3 8l2-5h18l-2 5" }], ["path", { d: "m8 3 5 5m2-5 5 5" }]],
     search: [["circle", { cx: "11", cy: "11", r: "7" }], ["path", { d: "m20 20-4-4" }]],
+    menu: [["path", { d: "M4 6h16M4 12h16M4 18h16" }]],
     copy: [["rect", { x: "8", y: "8", width: "13", height: "13", rx: "2" }], ["path", { d: "M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" }]],
     chart: [["path", { d: "M3 3v18h18" }], ["rect", { x: "7", y: "12", width: "3", height: "6", rx: "1" }], ["rect", { x: "14", y: "7", width: "3", height: "11", rx: "1" }]],
     vote: [["path", { d: "M4 11h16v10H4zM8 6l3-3 5 5-3 3z" }], ["path", { d: "m8 16 2 2 5-5" }]],
