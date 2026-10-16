@@ -1120,3 +1120,20 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
   .room-code-chip > span:first-child { display: none; }
   .room-code-chip .room-code-copy .ui-icon { width: 11px; height: 11px; }
 }
+
+
+/* Give the screening room the full viewport width; navigation stays one click away. */
+.sidebar { transition: transform .26s cubic-bezier(.2,.75,.25,1); }
+.main-view { transition: margin-left .26s ease; }
+.app-shell.is-room-view .sidebar { transform: translateX(calc(-100% - 10px)); }
+.app-shell.is-room-view .main-view { margin-left: 0; }
+.app-shell.is-room-view.room-sidebar-open .sidebar { transform: translateX(0); box-shadow: 12px 0 34px rgba(0,0,0,.34); }
+.room-sidebar-toggle { flex: 0 0 31px; }
+.room-sidebar-toggle .ui-icon { width: 16px; height: 16px; }
+.room-sidebar-scrim { position: fixed; z-index: 19; inset: 0; width: 100%; height: 100%; border: 0; background: rgba(7,6,10,.48); cursor: pointer; }
+
+@media (max-width: 700px) {
+  /* On phones the navigation is a compact top bar, so leave it available. */
+  .app-shell.is-room-view .sidebar { transform: none; }
+  .room-sidebar-toggle { display: none; }
+}
