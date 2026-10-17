@@ -8,25 +8,31 @@
     <meta name="application-name" content="Watch Party">
     <meta property="og:title" content="Watch Party — watch together">
     <meta property="og:description" content="Choose a film, invite your friends, and watch together in sync.">
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=watch-party-mobile-4">
     <title>Watch Party — watch together</title>
-    <link rel="stylesheet" href="/static/styles.css?v=mobile-layout-1">
+    <link rel="stylesheet" href="/static/styles.css?v=watch-party-mobile-4">
   </head>
   <body>
     <div class="app-shell">
       <!-- Navigation and profile controls -->
       <aside class="sidebar" id="mainNavigation" aria-label="Main navigation">
         <a class="brand" href="/" aria-label="Watch Party home">
-          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span class="brand-name">watch party</span>
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 36 36" focusable="false">
+              <rect x="7.5" y="9" width="21" height="16" rx="3.5"></rect>
+              <path class="brand-play" d="M15.5 13v8l7-4z"></path>
+              <path d="M13 29h10m-5-4v4"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Watch <span>Party</span></span>
         </a>
 
         <p class="nav-label">YOUR CINEMA</p>
         <nav class="primary-nav">
-          <button class="nav-link is-active" id="navDiscover" type="button">
+          <button class="nav-link is-active" id="navDiscover" type="button" aria-label="Discover">
             <span class="nav-icon" data-icon="compass" aria-hidden="true"></span><span>Discover</span>
           </button>
-          <button class="nav-link" id="navRoom" type="button">
+          <button class="nav-link" id="navRoom" type="button" aria-label="Watch room">
             <span class="nav-icon" data-icon="screen" aria-hidden="true"></span><span>Watch room</span>
           </button>
         </nav>
@@ -143,7 +149,7 @@
               </label>
             </div>
 
-            <p class="catalog-source-note">Room-fit picks learn from your poll votes. Highest rated uses OMDb’s IMDb score when available; open IMDb and Moctale for more on each film.</p>
+            <p class="catalog-source-note">Room-fit picks learn from your poll votes. Highest rated uses OMDb’s IMDb score when available; open IMDb and Rotten Tomatoes for more on each film.</p>
 
             <div class="catalog-status" id="catalogStatus" aria-live="polite">
               <span class="catalog-status-dot"></span><span>Putting together a few good options…</span>
@@ -415,6 +421,6 @@
     <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
     <script src="/static/icons.js?v=watch-party-brand-1" defer></script>
     <script src="/static/media.js?v=watch-party-brand-1" defer></script>
-    <script src="/static/app.js?v=watch-party-brand-1" defer></script>
+    <script src="/static/app.js?v=watch-party-mobile-4" defer></script>
   </body>
 </html>

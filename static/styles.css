@@ -80,25 +80,29 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 11px;
+  gap: 9px;
   width: max-content;
   margin: 0 0 50px 5px;
   color: var(--text);
   text-decoration: none;
 }
-.brand-mark { position: relative; display: flex; width: 23px; height: 22px; align-items: center; gap: 2px; }
-.brand-mark span {
-  display: block;
-  width: 5px;
-  border-radius: 5px 5px 2px 2px;
-  background: var(--lavender);
-  transform-origin: bottom;
+.brand-mark {
+  display: grid;
+  width: 35px;
+  height: 35px;
+  flex: 0 0 35px;
+  place-items: center;
+  border: 1px solid rgba(221, 200, 244, .24);
+  border-radius: 11px;
+  background: linear-gradient(145deg, #382b48, #211c2b 78%);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .08), 0 5px 14px rgba(0, 0, 0, .16);
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
-.brand-mark span:nth-child(1) { height: 12px; opacity: .78; transform: rotate(-8deg); }
-.brand-mark span:nth-child(2) { height: 21px; }
-.brand-mark span:nth-child(3) { height: 16px; opacity: .85; transform: rotate(8deg); }
-.brand-name { font-size: 18px; font-weight: 650; letter-spacing: -.045em; }
-.brand-name > span { position: relative; top: -6px; margin-left: 2px; color: var(--dim); font-family: var(--mono); font-size: 8px; letter-spacing: 0; }
+.brand-mark svg { width: 25px; height: 25px; fill: none; stroke: var(--lavender-soft); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+.brand-mark .brand-play { fill: var(--lavender-soft); stroke: none; }
+.brand-name { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; font-size: 18px; font-weight: 700; letter-spacing: -.045em; }
+.brand-name > span { color: var(--lavender-soft); }
+.brand:hover .brand-mark { transform: translateY(-1px); border-color: rgba(221, 200, 244, .48); box-shadow: inset 0 1px rgba(255, 255, 255, .1), 0 7px 18px rgba(188, 155, 234, .12); }
 .nav-label, .eyebrow, .breadcrumb, .screen-kicker, .queue-now-label, .catalog-status, .sidebar-footnote, .queue-footnote, .chat-footnote, .people-note, .room-footer, .ticket-topline, .ticket-bottom {
   font-family: var(--mono);
   font-size: 10px;
@@ -702,7 +706,7 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
   :root { --sidebar-width: 0px; }
   .sidebar { position: sticky; inset: 0 0 auto; width: 100%; height: 55px; flex-direction: row; justify-content: space-between; padding: 0 14px; border-right: 0; border-bottom: 1px solid var(--line); }
   .brand { margin: 0; }
-  .brand-name { display: inline; font-size: 16px; }
+  .brand-name { display: inline-flex; font-size: 16px; }
   .primary-nav { display: flex; width: auto; height: 100%; align-items: center; gap: 5px; }
   .nav-link { width: 34px; min-height: 34px; }
   .nav-link > span:last-child, .sidebar .nav-label, .sidebar-divider, .sidebar-section-head, .lobby-note, .sidebar-spacer, .profile-meta, .profile-more, .sidebar-footnote { display: none; }
@@ -1173,7 +1177,7 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
   }
 
   .brand { flex: 0 0 auto; margin: 0; }
-  .brand-name { display: inline; font-size: 15px; }
+  .brand-name { display: inline-flex; font-size: 15px; }
   .primary-nav {
     display: flex;
     width: auto;
@@ -1327,6 +1331,7 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
   .media-call-status { width: 100%; margin-left: 2px; font-size: 9px; }
   .media-dock { padding: 10px; }
   .video-tile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .video-tile.is-local video { transform: scaleX(-1); }
 
   .queue-panel { order: 1; padding: 14px; }
   .queue-panel .panel-heading h2 { font-size: 17px; }
@@ -1437,8 +1442,9 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 
 @media (max-width: 380px) {
   .sidebar { padding-right: max(10px, env(safe-area-inset-right)); padding-left: max(10px, env(safe-area-inset-left)); }
-  .brand-name { display: none; }
+  .brand-name { display: inline-flex; font-size: 14px; }
   .primary-nav { justify-content: flex-end; padding-right: 4px; padding-left: 4px; }
+  .nav-link > span:last-child { display: none; }
   .nav-link { gap: 4px; padding: 0 6px; font-size: 10px; }
   .room-topbar { padding-right: 10px; padding-left: 10px; }
   .room-tools { gap: 5px; }

@@ -50,7 +50,7 @@ pip install -r requirements.txt
 python -m uvicorn app:app --reload
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The app runs without API keys and includes a small starter catalog.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). If you start the server on a different port, such as 8001, open that same port in the browser. The app runs without API keys and includes a small starter catalog.
 
 To get live posters, film details, and IMDb ratings, add `OMDB_API_KEY` to a private `.env` file and restart the server. For optional stickers, video calls, multi-worker room state, or cloud uploads, see [External services](docs/EXTERNAL_SERVICES_SETUP.md).
 
