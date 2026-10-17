@@ -1,12 +1,12 @@
 # Set up LiveKit, Redis, and cloud file storage
 
-This guide configures the optional hosted services used by Afterglow. The app reads their settings from server-side environment variables. Keep credentials out of source control and browser code.
+This guide configures the optional hosted services used by Watch Party. The app reads their settings from server-side environment variables. Keep credentials out of source control and browser code.
 
 ## What each service does
 
 - **LiveKit Cloud** carries camera and screen-share video through an SFU. LiveKit Cloud also provides managed TURN relay ([connection docs](https://docs.livekit.io/intro/basics/connect/)), so you do not need a separate coturn account/server while using it.
 - **Upstash Redis** shares room state and WebSocket events between multiple FastAPI workers on the same machine. It does not improve movie playback or YouTube buffering.
-- **Cloud storage** stores uploaded MP4/WebM files outside the app server. Afterglow keeps the bucket private and creates temporary download links. Local storage remains available without an external storage provider.
+- **Cloud storage** stores uploaded MP4/WebM files outside the app server. Watch Party keeps the bucket private and creates temporary download links. Local storage remains available without an external storage provider.
 
 The movie itself still comes from its source. YouTube videos are streamed separately by each viewer's browser; these services cannot make YouTube's network deliver video faster.
 
@@ -19,9 +19,9 @@ The movie itself still comes from its source. YouTube videos are streamed separa
 
 ## 2. Create the Upstash Redis database
 
-1. Create a Redis database in the [Upstash Console](https://console.upstash.com/), choosing a region close to the computer/server that will run Afterglow.
+1. Create a Redis database in the [Upstash Console](https://console.upstash.com/), choosing a region close to the computer/server that will run Watch Party.
 2. Copy the TLS connection string from the database details. Upstash shows this as `rediss://...` ([Upstash connection troubleshooting](https://upstash.com/docs/redis/troubleshooting/no_auth)).
-3. Redis is useful when Afterglow runs more than one Uvicorn worker. All workers must still share this same computer's SQLite database file. It is not a multi-server database setup.
+3. Redis is useful when Watch Party runs more than one Uvicorn worker. All workers must still share this same computer's SQLite database file. It is not a multi-server database setup.
 
 ## 3. Choose where uploaded files will be stored
 
@@ -30,7 +30,7 @@ The movie itself still comes from its source. YouTube videos are streamed separa
 Supabase provides an S3-compatible endpoint, so the app can use the same upload and playback flow as R2. Review the [current Supabase pricing and project limits](https://supabase.com/pricing), including storage, data transfer, and inactivity behavior, before choosing a plan.
 
 1. Create a project at [Supabase](https://supabase.com/) using a plan that fits your intended use.
-2. In the project, open **Storage** and create a bucket named `afterglow-media`. Keep it **private**.
+2. In the project, open **Storage** and create a bucket named `watch-party-media`. Keep it **private**.
 3. In the Storage settings, enable the **S3 protocol** connection. Create an S3 access key and secret, then copy the endpoint and region shown there. Save the secret somewhere private; Supabase only shows it once. These credentials are server-only and grant broad access to storage, so never put them in HTML/JavaScript or send them in chat. See [Supabase S3 authentication](https://supabase.com/docs/guides/storage/s3/authentication).
 4. Review the project's plan and billing settings before using it for uploads.
 
@@ -61,7 +61,7 @@ LIVEKIT_API_SECRET=your-livekit-api-secret
 REDIS_URL=rediss://default:your-password@your-database.upstash.io:6379
 
 MEDIA_STORAGE=s3
-S3_BUCKET=afterglow-media
+S3_BUCKET=watch-party-media
 S3_REGION=copy-the-region-shown-by-your-provider
 S3_PREFIX=watchparty-media
 S3_ENDPOINT_URL=https://your-project.storage.supabase.co/storage/v1/s3

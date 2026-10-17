@@ -1,4 +1,4 @@
-"""Afterglow: a small, readable watch-party server.
+"""Watch Party: a small, readable watch-party server.
 
 FastAPI serves the plain HTML/CSS/JavaScript client and owns each room's
 canonical playback state. SQLite keeps room snapshots, movie cache entries,
@@ -1228,7 +1228,7 @@ async def lifespan(_: FastAPI):
 
 
 # HTTP API
-app = FastAPI(title="Afterglow Watch Party", lifespan=lifespan)
+app = FastAPI(title="Watch Party", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 

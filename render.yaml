@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: afterglow-watch-party
+    name: watch-party
     runtime: python
     plan: free
     envVars:

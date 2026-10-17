@@ -1,6 +1,6 @@
 # Stream modes and latency
 
-Afterglow sends room commands separately from audio and video. The FastAPI WebSocket carries small events such as `play`, `pause`, `seek`, chat, and WebRTC setup messages. It does not proxy YouTube or ordinary movie frames.
+Watch Party sends room commands separately from audio and video. The FastAPI WebSocket carries small events such as `play`, `pause`, `seek`, chat, and WebRTC setup messages. It does not proxy YouTube or ordinary movie frames.
 
 ```mermaid
 flowchart LR

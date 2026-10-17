@@ -488,8 +488,8 @@ function setProfileLabels() {
     "Signed in as @" + state.username + " · your room identity is saved.";
   accountButtons.classList.toggle("hidden", !state.isGuest);
   logoutButton.classList.toggle("hidden", state.isGuest);
-  if (window.AfterglowMedia) {
-    window.AfterglowMedia.configure({ userId: state.userId, name: name, sendAction: sendAction, onToast: showToast });
+  if (window.WatchPartyMedia) {
+    window.WatchPartyMedia.configure({ userId: state.userId, name: name, sendAction: sendAction, onToast: showToast });
   }
 }
 
@@ -501,7 +501,7 @@ function applySessionUser(user) {
   state.isGuest = Boolean(user.is_guest);
   setProfileLabels();
   if (oldId && oldId !== state.userId && state.room && state.socket) {
-    if (window.AfterglowMedia) window.AfterglowMedia.disconnect();
+    if (window.WatchPartyMedia) window.WatchPartyMedia.disconnect();
     state.socket.close(1000, "Session identity changed");
   }
 }
@@ -810,7 +810,7 @@ async function joinRoom(code) {
 }
 
 async function enterRoom(code, initialRoom) {
-  if (window.AfterglowMedia && state.room && state.room.code !== code) window.AfterglowMedia.disconnect();
+  if (window.WatchPartyMedia && state.room && state.room.code !== code) window.WatchPartyMedia.disconnect();
   state.room = initialRoom || null;
   state.lastVersion = 0;
   setView("room");
@@ -834,7 +834,7 @@ function connectToRoom(code) {
   const socketUrl = protocol + "//" + window.location.host + "/ws/rooms/" + encodeURIComponent(code);
   const socket = new WebSocket(socketUrl);
   state.socket = socket;
-  if (window.AfterglowMedia) window.AfterglowMedia.setSocket(socket);
+  if (window.WatchPartyMedia) window.WatchPartyMedia.setSocket(socket);
   socket.addEventListener("open", function () {
     window.clearTimeout(state.reconnectTimer);
     state.reconnectTimer = null;
@@ -862,7 +862,7 @@ function connectToRoom(code) {
     } else if (message.type === "room.ended") {
       returnToLobby(message.message || "The host ended this room.");
     } else if (message.type === "rtc.signal") {
-      if (window.AfterglowMedia) window.AfterglowMedia.handleSignal(message);
+      if (window.WatchPartyMedia) window.WatchPartyMedia.handleSignal(message);
     } else if (message.type === "error") {
       recordActionAcknowledgement(message.action_id, { ok: false, message: message.message || "The room rejected that change." });
       showToast(message.message || "That room action did not go through.");
@@ -871,7 +871,7 @@ function connectToRoom(code) {
         error.textContent = message.message || "The room rejected that stream.";
         error.classList.remove("hidden");
       }
-      if (window.AfterglowMedia) window.AfterglowMedia.handleServerError(message.message || "");
+      if (window.WatchPartyMedia) window.WatchPartyMedia.handleServerError(message.message || "");
     }
   });
   socket.addEventListener("close", function (event) {
@@ -910,7 +910,7 @@ function receiveSnapshot(room) {
   state.room = room;
   state.lastVersion = Number(room.version || 0);
   renderRoom();
-  if (window.AfterglowMedia) window.AfterglowMedia.syncRoom(state.room);
+  if (window.WatchPartyMedia) window.WatchPartyMedia.syncRoom(state.room);
   if (ui.lobby.classList.contains("hidden")) loadCatalogDebounced(80);
 }
 
@@ -1419,20 +1419,23 @@ function applyLocalVolume(value, save) {
     else state.youtubePlayer.unMute();
   }
   const muted = volume === 0;
-  if (window.AfterglowIcons) ui.volumeIcon.replaceChildren(window.AfterglowIcons.create(muted ? "volumeX" : "volume2", 16));
+  if (window.WatchPartyIcons) ui.volumeIcon.replaceChildren(window.WatchPartyIcons.create(muted ? "volumeX" : "volume2", 16));
   ui.volumeButton.setAttribute("aria-label", muted ? "Unmute video" : "Mute video");
   ui.volumeButton.setAttribute("aria-pressed", String(muted));
   ui.volumeButton.title = muted ? "Unmute video" : "Mute video";
   if (save) {
-    try { window.localStorage.setItem("afterglowPlaybackVolume", String(volume)); } catch (_) { /* Volume still works when storage is unavailable. */ }
+    try { window.localStorage.setItem("watchPartyPlaybackVolume", String(volume)); } catch (_) { /* Volume still works when storage is unavailable. */ }
   }
 }
 
 let initialVolume = 80;
 try {
-  const storedVolumeValue = window.localStorage.getItem("afterglowPlaybackVolume");
+  const storedVolumeValue = window.localStorage.getItem("watchPartyPlaybackVolume") ?? window.localStorage.getItem("afterglowPlaybackVolume");
   const storedVolume = Number(storedVolumeValue);
-  if (storedVolumeValue !== null && Number.isFinite(storedVolume)) initialVolume = storedVolume;
+  if (storedVolumeValue !== null && Number.isFinite(storedVolume)) {
+    initialVolume = storedVolume;
+    if (window.localStorage.getItem("watchPartyPlaybackVolume") === null) window.localStorage.setItem("watchPartyPlaybackVolume", storedVolumeValue);
+  }
 } catch (_) { /* Use the comfortable default when storage is unavailable. */ }
 applyLocalVolume(initialVolume, false);
 
@@ -1500,7 +1503,7 @@ function renderChat() {
   if (!messages.length) {
     const prompt = makeElement("div", "chat-first-message");
     const icon = makeElement("span", "chat-empty-icon");
-    icon.append(window.AfterglowIcons.create("messages", 19));
+    icon.append(window.WatchPartyIcons.create("messages", 19));
     prompt.append(icon, makeElement("strong", "chat-empty-title", "The opening credits haven't rolled."));
     prompt.append(makeElement("span", "chat-empty-copy", "Say hello, share a film pick, or send a sticker to get the conversation started."));
     ui.chatMessages.append(prompt);
@@ -1879,7 +1882,7 @@ function returnToLobby(message) {
   state.activeSource = "";
   state.activeKind = "";
   window.clearTimeout(state.reconnectTimer);
-  if (window.AfterglowMedia) window.AfterglowMedia.disconnect();
+  if (window.WatchPartyMedia) window.WatchPartyMedia.disconnect();
   if (previousSocket && previousSocket.readyState < WebSocket.CLOSING) previousSocket.close(1000, "Left screening room");
 
   ui.video.pause();
@@ -2011,21 +2014,21 @@ ui.sourceModeGrid.querySelectorAll("[data-source-kind]").forEach(function (butto
   button.addEventListener("click", function () { setSourceMode(button.dataset.sourceKind); });
 });
 document.getElementById("shareScreenButton").addEventListener("click", function () {
-  if (window.AfterglowMedia) window.AfterglowMedia.startScreenShare();
+  if (window.WatchPartyMedia) window.WatchPartyMedia.startScreenShare();
 });
 document.getElementById("stopScreenButton").addEventListener("click", function () {
-  if (window.AfterglowMedia) window.AfterglowMedia.stopScreenShare();
+  if (window.WatchPartyMedia) window.WatchPartyMedia.stopScreenShare();
 });
 document.getElementById("videoChatButton").addEventListener("click", function () {
-  if (!state.room || !window.AfterglowMedia) return;
-  if ((state.room.video_members || []).includes(state.userId)) window.AfterglowMedia.leaveVideoChat();
-  else window.AfterglowMedia.startVideoChat(false);
+  if (!state.room || !window.WatchPartyMedia) return;
+  if ((state.room.video_members || []).includes(state.userId)) window.WatchPartyMedia.leaveVideoChat();
+  else window.WatchPartyMedia.startVideoChat(false);
 });
 document.getElementById("micToggleButton").addEventListener("click", function () {
-  if (window.AfterglowMedia) window.AfterglowMedia.toggleMic();
+  if (window.WatchPartyMedia) window.WatchPartyMedia.toggleMic();
 });
 document.getElementById("cameraToggleButton").addEventListener("click", function () {
-  if (window.AfterglowMedia) window.AfterglowMedia.toggleCamera();
+  if (window.WatchPartyMedia) window.WatchPartyMedia.toggleCamera();
 });
 ui.resumeButton.addEventListener("click", function () {
   if (!state.room) return;
@@ -2190,7 +2193,7 @@ async function boot() {
       const clientConfig = await api("/api/client-config");
       state.klipyAppKey = String(clientConfig.klipy_app_key || "");
     } catch (_) { state.klipyAppKey = ""; }
-    if (window.AfterglowMedia) await window.AfterglowMedia.refreshConfig();
+    if (window.WatchPartyMedia) await window.WatchPartyMedia.refreshConfig();
   } catch (error) {
     showToast("The app could not start a secure session: " + error.message);
     return;

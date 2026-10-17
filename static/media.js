@@ -137,7 +137,7 @@
   }
 
   function setMediaButtonLabel(button, iconName, label) {
-    if (window.AfterglowIcons) button.replaceChildren(window.AfterglowIcons.create(iconName, 15), document.createTextNode(" " + label));
+    if (window.WatchPartyIcons) button.replaceChildren(window.WatchPartyIcons.create(iconName, 15), document.createTextNode(" " + label));
     else button.textContent = label;
   }
 
@@ -705,7 +705,7 @@
   }
 
   // Public controls used by the main app
-  window.AfterglowMedia = {
+  window.WatchPartyMedia = {
     configure: function (options) {
       identity = { userId: options.userId, name: options.name };
       sendAction = options.sendAction;

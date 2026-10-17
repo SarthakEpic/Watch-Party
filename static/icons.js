@@ -64,6 +64,6 @@
     });
   }
 
-  window.AfterglowIcons = { create: create, hydrate: hydrate };
+  window.WatchPartyIcons = { create: create, hydrate: hydrate };
   hydrate(document);
 })();

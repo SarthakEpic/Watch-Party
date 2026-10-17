@@ -35,7 +35,7 @@ Peer mesh sends a separate media copy from each participant to every other parti
    LIVEKIT_API_SECRET=your_server_side_api_secret
    ```
 
-3. Restart Afterglow. The server returns a five-minute, room-scoped token after checking the user's app session and room membership. The API secret stays on the server. When all three settings are present, video chat and screen share use LiveKit; otherwise they use peer mesh.
+3. Restart Watch Party. The server returns a five-minute, room-scoped token after checking the user's app session and room membership. The API secret stays on the server. When all three settings are present, video chat and screen share use LiveKit; otherwise they use peer mesh.
 4. Test with three or more browsers. Check the LiveKit dashboard for the room and participants. Movie playback remains direct from YouTube or each browser's media URL; the SFU carries only live camera/screen media.
 
 The browser downloads the pinned LiveKit JavaScript client from jsDelivr only when SFU mode is enabled. If the service or SDK cannot connect, video chat does not connect; playback, room controls, and text chat remain available. LiveKit setup and egress costs depend on the selected hosting plan.
@@ -48,10 +48,10 @@ Local storage is the default. To store uploaded videos in a private AWS S3 bucke
 MEDIA_STORAGE=s3
 S3_BUCKET=your-private-bucket
 S3_REGION=your-bucket-region
-S3_PREFIX=afterglow-media
+S3_PREFIX=watchparty-media
 ```
 
-For AWS, provide credentials through the standard AWS credential chain, preferably a restricted instance role in a deployment. For an S3-compatible service, set `S3_ENDPOINT_URL`; you can provide its credentials with `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`. Grant only object read/write access to the configured prefix, keep the bucket private, and enable HTTPS. After upload, Afterglow returns a short-lived presigned download URL through its media route. S3 egress and storage may cost money.
+For AWS, provide credentials through the standard AWS credential chain, preferably a restricted instance role in a deployment. For an S3-compatible service, set `S3_ENDPOINT_URL`; you can provide its credentials with `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`. Grant only object read/write access to the configured prefix, keep the bucket private, and enable HTTPS. After upload, Watch Party returns a short-lived presigned download URL through its media route. S3 egress and storage may cost money.
 
 If `MEDIA_STORAGE` is unset and `S3_BUCKET` is empty, files remain in `uploads/` on this machine. Existing local uploads do not move automatically when storage mode changes.
 
