@@ -1,3 +1,4 @@
+// Shared state and DOM references
 const EMOJI = ["❤️", "😂", "👏", "😮", "🍿", "✨", "🔥", "🥹", "🙌", "👀"];
 const CHAT_EMOJIS = [
   ["❤️", "heart love"], ["🧡", "orange heart"], ["💛", "yellow heart"], ["💚", "green heart"],
@@ -49,6 +50,8 @@ const state = {
   youtubeLastBufferTime: 0,
   youtubeRecoveryAttempts: 0,
   youtubeRecoveryAttemptAt: 0,
+  bufferStatusTimer: null,
+  lastVolume: 80,
   applyingPlaybackUntil: 0,
   pendingMovie: null,
   videoDialogMovie: null,
@@ -82,6 +85,11 @@ const ui = {
   genre: document.getElementById("genreFilter"),
   category: document.getElementById("categoryFilter"),
   video: document.getElementById("sharedVideo"),
+  bufferStatus: document.getElementById("bufferStatus"),
+  bufferStatusLabel: document.getElementById("bufferStatusLabel"),
+  volumeButton: document.getElementById("volumeButton"),
+  volumeIcon: document.getElementById("volumeIcon"),
+  volumeSlider: document.getElementById("volumeSlider"),
   youtubeContainer: document.getElementById("youtubeContainer"),
   browserPreview: document.getElementById("browserPreview"),
   emptyScreen: document.getElementById("emptyScreen"),
@@ -148,6 +156,7 @@ function makeId() {
   return Array.from(bytes, function (byte) { return byte.toString(16).padStart(2, "0"); }).join("");
 }
 
+// Chat reactions and KLIPY stickers
 function encodeStickerPayload(payload) {
   const bytes = new TextEncoder().encode(JSON.stringify(payload));
   let binary = "";
@@ -458,6 +467,7 @@ function replaceKnownShortcodes(text) {
   return String(text || "").replace(/:([a-z0-9_-]+):/gi, function (token, name) { return aliases.get(name.toLowerCase()) || token; });
 }
 
+// Profile, identity, and view state
 function safeTheme(theme) {
   const allowed = ["violet", "amber", "fern", "rose", "blue", "coral", "mint", "gold"];
   return allowed.includes(theme) ? theme : "violet";
@@ -609,6 +619,7 @@ function updateCatalogStatus(message, active) {
   ui.catalogStatus.append(dot, label);
 }
 
+// Film catalog and room selection
 async function loadCatalog() {
   const query = ui.search.value.trim();
   const genre = ui.genre.value;
@@ -764,6 +775,7 @@ function renderMovieCards(movies) {
   });
 }
 
+// Room creation, joining, and live updates
 async function createRoom(demo) {
   const button = demo ? document.getElementById("tryDemoButton") : document.getElementById("createRoomButton");
   button.disabled = true;
@@ -973,6 +985,7 @@ function waitForRoomSocket(timeoutMs) {
   });
 }
 
+// Stream sources and YouTube player
 function movieSource(movie) {
   return movie && movie.source_url ? movie.source_url : "";
 }
@@ -1105,6 +1118,7 @@ function loadYouTubeMovie(videoId) {
       events: {
         onReady: function (event) {
           state.youtubeReady = true;
+          applyLocalVolume(Number(ui.volumeSlider.value), false);
           const duration = event.target.getDuration();
           ui.seek.max = String(duration || 100);
           ui.timeTotal.textContent = formatTime(duration);
@@ -1113,10 +1127,12 @@ function loadYouTubeMovie(videoId) {
         onStateChange: function (event) {
           if (!state.room) return;
           if (event.data === window.YT.PlayerState.BUFFERING) {
+            if (state.room.playback.is_playing) showBufferStatus("YouTube is buffering…");
             if (state.room.playback.is_playing) updateYouTubeBufferWatch(event.target, Date.now());
             return;
           }
           if (event.data === window.YT.PlayerState.PLAYING || event.data === window.YT.PlayerState.PAUSED || event.data === window.YT.PlayerState.ENDED) {
+            hideBufferStatus();
             resetYouTubeBufferWatch();
           }
           if (Date.now() < state.applyingPlaybackUntil) return;
@@ -1142,6 +1158,7 @@ function loadYouTubeMovie(videoId) {
   });
 }
 
+// Room display and shared playback controls
 function roomIsHost() {
   return Boolean(state.room && state.room.host_id === state.userId);
 }
@@ -1218,6 +1235,9 @@ function renderCurrentMovie() {
     }
     state.activeSource = source;
     state.activeKind = kind;
+    ui.volumeButton.disabled = kind === "browser";
+    ui.volumeSlider.disabled = kind === "browser";
+    hideBufferStatus();
     ui.video.pause();
     ui.video.classList.toggle("hidden", kind === "youtube" || kind === "browser");
     ui.youtubeContainer.classList.toggle("hidden", kind !== "youtube");
@@ -1373,6 +1393,49 @@ function onVideoMetadata() {
   applyPlayback(serverPlaybackPosition());
 }
 
+function showBufferStatus(message) {
+  window.clearTimeout(state.bufferStatusTimer);
+  state.bufferStatusTimer = window.setTimeout(function () {
+    ui.bufferStatusLabel.textContent = message;
+    ui.bufferStatus.classList.remove("hidden");
+  }, 350);
+}
+
+function hideBufferStatus() {
+  window.clearTimeout(state.bufferStatusTimer);
+  state.bufferStatusTimer = null;
+  ui.bufferStatus.classList.add("hidden");
+}
+
+function applyLocalVolume(value, save) {
+  const volume = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+  ui.volumeSlider.value = String(volume);
+  ui.video.volume = volume / 100;
+  ui.video.muted = volume === 0;
+  if (volume > 0) state.lastVolume = volume;
+  if (state.activeKind === "youtube" && state.youtubeReady && state.youtubePlayer) {
+    state.youtubePlayer.setVolume(volume);
+    if (volume === 0) state.youtubePlayer.mute();
+    else state.youtubePlayer.unMute();
+  }
+  const muted = volume === 0;
+  if (window.AfterglowIcons) ui.volumeIcon.replaceChildren(window.AfterglowIcons.create(muted ? "volumeX" : "volume2", 16));
+  ui.volumeButton.setAttribute("aria-label", muted ? "Unmute video" : "Mute video");
+  ui.volumeButton.setAttribute("aria-pressed", String(muted));
+  ui.volumeButton.title = muted ? "Unmute video" : "Mute video";
+  if (save) {
+    try { window.localStorage.setItem("afterglowPlaybackVolume", String(volume)); } catch (_) { /* Volume still works when storage is unavailable. */ }
+  }
+}
+
+let initialVolume = 80;
+try {
+  const storedVolumeValue = window.localStorage.getItem("afterglowPlaybackVolume");
+  const storedVolume = Number(storedVolumeValue);
+  if (storedVolumeValue !== null && Number.isFinite(storedVolume)) initialVolume = storedVolume;
+} catch (_) { /* Use the comfortable default when storage is unavailable. */ }
+applyLocalVolume(initialVolume, false);
+
 function setSyncStatus(mode, text) {
   ui.syncIndicator.classList.toggle("is-waiting", mode === "waiting");
   ui.syncIndicator.classList.toggle("is-correcting", mode === "correcting");
@@ -1393,6 +1456,7 @@ function formatTime(seconds) {
   return hours ? String(hours) + ":" + String(minutes).padStart(2, "0") + ":" + remaining : String(minutes) + ":" + remaining;
 }
 
+// Playlist, chat, people, and poll rendering
 function renderPlaylist() {
   const items = state.room.playlist || [];
   document.getElementById("queueCount").textContent = String(items.length);
@@ -1554,6 +1618,7 @@ function setActivityTab(tab, focusButton) {
   if (focusButton) (chatSelected ? document.getElementById("chatTab") : document.getElementById("peopleTab")).focus();
 }
 
+// Stream source dialog and submission
 function setSourceMode(kind) {
   state.sourceMode = ["url", "youtube", "file", "browser"].includes(kind) ? kind : "url";
   ui.sourceModeGrid.querySelectorAll("[data-source-kind]").forEach(function (button) {
@@ -1832,6 +1897,7 @@ function returnToLobby(message) {
   if (message) showToast(message);
 }
 
+// UI events, polling, and startup
 document.getElementById("createRoomButton").addEventListener("click", function () { createRoom(false); });
 document.getElementById("tryDemoButton").addEventListener("click", function () { createRoom(true); });
 document.getElementById("navDiscover").addEventListener("click", function () { showLobbyAndBrowse(); });
@@ -1953,7 +2019,7 @@ document.getElementById("stopScreenButton").addEventListener("click", function (
 document.getElementById("videoChatButton").addEventListener("click", function () {
   if (!state.room || !window.AfterglowMedia) return;
   if ((state.room.video_members || []).includes(state.userId)) window.AfterglowMedia.leaveVideoChat();
-  else window.AfterglowMedia.startVideoChat();
+  else window.AfterglowMedia.startVideoChat(false);
 });
 document.getElementById("micToggleButton").addEventListener("click", function () {
   if (window.AfterglowMedia) window.AfterglowMedia.toggleMic();
@@ -2011,7 +2077,13 @@ ui.seek.addEventListener("change", function () {
   }
 });
 ui.seek.addEventListener("pointerup", function () { state.draggedSeek = false; });
+ui.volumeSlider.addEventListener("input", function () { applyLocalVolume(ui.volumeSlider.value, true); });
+ui.volumeButton.addEventListener("click", function () {
+  const current = Number(ui.volumeSlider.value) || 0;
+  applyLocalVolume(current === 0 ? state.lastVolume || 80 : 0, true);
+});
 ui.video.addEventListener("error", function () {
+  hideBufferStatus();
   if (state.activeSource && ["url", "file"].includes(state.activeKind)) {
     ui.videoError.classList.remove("hidden");
     setSyncStatus("waiting", "Video link unavailable");
@@ -2023,6 +2095,14 @@ ui.video.addEventListener("loadedmetadata", function () {
     ui.seek.max = String(Number.isFinite(ui.video.duration) ? ui.video.duration : 100);
   }
 });
+ui.video.addEventListener("waiting", function () {
+  if (!ui.video.paused && ["url", "file"].includes(state.activeKind)) showBufferStatus("Buffering video…");
+});
+ui.video.addEventListener("stalled", function () {
+  if (!ui.video.paused && ["url", "file"].includes(state.activeKind)) showBufferStatus("Waiting for video data…");
+});
+ui.video.addEventListener("playing", hideBufferStatus);
+ui.video.addEventListener("canplay", hideBufferStatus);
 ui.video.addEventListener("ended", function () {
   if (roomIsHost() && state.room && state.activeKind !== "youtube" && state.room.playback.is_playing) {
     sendAction("pause", { position: ui.video.duration || ui.video.currentTime });

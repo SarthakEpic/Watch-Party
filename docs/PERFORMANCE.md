@@ -14,9 +14,9 @@ Run the app on one machine with:
 
 Then, in another terminal, run:
 
-    python benchmark.py --url ws://127.0.0.1:8000 --clients 10 --actions 30
+    python scripts/benchmark.py --url ws://127.0.0.1:8000 --clients 10 --actions 30
 
-The script creates separate server-issued guest sessions for 10 independent WebSocket clients. One client sends 30 seek-control actions. For each action, it records the time from the sender's WebSocket send to receipt of that version by the other nine clients. The p95 is computed from those 270 sender-to-recipient observations. The script prints the actual percentiles; rerun it on the machine and network used for the interview.
+The script creates separate server-issued guest sessions for 10 independent WebSocket clients. One client sends 30 seek-control actions. For each action, it records the time from the sender's WebSocket send to receipt of that version by the other nine clients. The p95 is computed from those 270 sender-to-recipient observations. The script prints the actual percentiles; rerun it on the machine and network you want to measure.
 
 This is a local loopback measurement: it measures Python server fan-out and local WebSocket delivery, not Wi-Fi variation, remote internet latency, or video hosting latency. HTML5 video is corrected above 500 ms drift. YouTube uses a 1.5 second threshold and a five second cooldown to avoid repeated iframe seeks interrupting its adaptive buffering. A YouTube stall with no detected progress for ten seconds gets one resume nudge; prolonged buffering still depends on the viewer's network, device, and YouTube's selected quality. Browser decoder and network buffering can affect visible video independently of control delivery.
 

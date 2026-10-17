@@ -33,6 +33,7 @@ from pydantic import BaseModel, Field
 from dotenv import dotenv_values, load_dotenv
 
 
+# Configuration and starter catalog
 ROOT = Path(__file__).resolve().parent
 STATIC_DIR = ROOT / "static"
 DATABASE_PATH = ROOT / "watch_party.sqlite3"
@@ -240,6 +241,7 @@ for _movie in STARTER_MOVIES:
 
 OMDB_DISCOVERY_TITLES = [(movie["title"], movie["year"]) for movie in STARTER_MOVIES]
 
+# Local database and account helpers
 database = sqlite3.connect(DATABASE_PATH, check_same_thread=False)
 database.row_factory = sqlite3.Row
 database_lock = threading.RLock()
@@ -414,6 +416,7 @@ def password_hash(password: str, salt: bytes) -> bytes:
     return hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2**14, r=8, p=1, dklen=32)
 
 
+# Uploaded media storage
 def get_s3_client() -> Any:
     global s3_client_cache
     if s3_client_cache is None:
@@ -443,6 +446,7 @@ def s3_media_key(media_id: str) -> str:
     return (S3_PREFIX + "/" if S3_PREFIX else "") + media_id
 
 
+# Room state and multi-worker coordination
 def new_room(
     code: str,
     host_id: str,
@@ -881,6 +885,7 @@ def clean_user_id(value: str) -> str:
     return cleaned or secrets.token_urlsafe(12)
 
 
+# Movie catalog and recommendations
 def read_cached_catalog(cache_key: str, allow_stale: bool = False) -> list[dict[str, Any]] | None:
     with database_lock:
         row = database.execute(
@@ -1149,6 +1154,7 @@ def recommend_for_room(movies: list[dict[str, Any]], room_code: str | None) -> l
     return [movie for _, movie in scored]
 
 
+# API models and application lifecycle
 class RoomCreate(BaseModel):
     demo: bool = False
     title: str = Field(default="A little Friday cinema club", max_length=60)
@@ -1221,6 +1227,7 @@ async def lifespan(_: FastAPI):
         redis_client = None
 
 
+# HTTP API
 app = FastAPI(title="Afterglow Watch Party", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -1628,6 +1635,7 @@ async def catalog(
     }
 
 
+# Room actions and WebSocket connections
 def save_movie_vote(room_code: str, user_id: str, movie: dict[str, Any], vote: int) -> None:
     with database_lock:
         database.execute(

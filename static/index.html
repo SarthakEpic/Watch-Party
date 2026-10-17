@@ -11,6 +11,7 @@
   </head>
   <body>
     <div class="app-shell">
+      <!-- Navigation and profile controls -->
       <aside class="sidebar" id="mainNavigation" aria-label="Main navigation">
         <a class="brand" href="/" aria-label="Afterglow home">
           <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
@@ -49,6 +50,7 @@
       </aside>
       <button class="room-sidebar-scrim hidden" id="roomSidebarScrim" type="button" aria-label="Close navigation"></button>
 
+      <!-- Discover page and movie catalog -->
       <main class="main-view lobby-view" id="lobbyView">
         <header class="topbar">
           <div class="breadcrumb"><span>AFTERGLOW</span><span class="breadcrumb-slash">/</span><strong>DISCOVER</strong></div>
@@ -154,6 +156,7 @@
         </div>
       </main>
 
+      <!-- Watch room: queue, shared player, chat, and people -->
       <main class="main-view room-view hidden" id="roomView">
         <header class="room-topbar">
           <div class="room-heading">
@@ -214,11 +217,12 @@
             </div>
 
             <div class="video-frame" id="videoFrame">
-              <video id="sharedVideo" playsinline preload="metadata" aria-label="Shared screening video"></video>
+              <video id="sharedVideo" playsinline preload="auto" aria-label="Shared screening video"></video>
               <div class="media-embed hidden" id="youtubeContainer" aria-label="YouTube player"><div id="youtubePlayerMount"></div></div>
               <iframe class="media-embed browser-preview hidden" id="browserPreview" title="Shared browser page" sandbox="allow-scripts allow-forms allow-presentation" allow="fullscreen; autoplay" referrerpolicy="strict-origin-when-cross-origin"></iframe>
               <video class="screen-share-video hidden" id="screenShareVideo" autoplay playsinline aria-label="Live shared screen"></video>
               <div class="screen-share-badge hidden" id="screenShareBadge"><span class="live-pip"></span> LIVE SCREEN SHARE <span id="screenSharerName"></span></div>
+              <div class="buffer-status hidden" id="bufferStatus" role="status" aria-live="polite"><span class="buffer-status-dot"></span><span id="bufferStatusLabel">Buffering video…</span></div>
               <div class="video-shade"></div>
               <div class="empty-screen" id="emptyScreen">
                 <div class="empty-screen-rings"><span></span><span></span><span></span></div>
@@ -247,6 +251,11 @@
               <label class="sr-only" for="seekSlider">Seek shared video</label>
               <input id="seekSlider" class="seek-slider" type="range" min="0" max="100" step="0.1" value="0" disabled>
               <span class="time-label time-total" id="timeTotal">0:00</span>
+              <div class="volume-control" aria-label="Local playback volume">
+                <button class="volume-button" id="volumeButton" type="button" aria-label="Mute video" aria-pressed="false" title="Mute video"><span id="volumeIcon" data-icon="volume2" aria-hidden="true"></span></button>
+                <label class="sr-only" for="volumeSlider">Playback volume</label>
+                <input id="volumeSlider" class="volume-slider" type="range" min="0" max="100" step="1" value="80">
+              </div>
               <span class="control-divider"></span>
               <button class="control-text-button" id="changeVideoButton" type="button">Change source</button>
               <span class="control-host-note" id="controlHostNote">Only the host steers playback</span>
@@ -256,14 +265,14 @@
               <button class="media-action-button media-action-primary" id="chooseSourceButton" type="button"><span data-icon="film" aria-hidden="true"></span> Choose video</button>
               <button class="media-action-button" id="shareScreenButton" type="button"><span data-icon="monitorUp" aria-hidden="true"></span> Share screen</button>
               <button class="media-action-button hidden" id="stopScreenButton" type="button"><span data-icon="square" aria-hidden="true"></span> Stop sharing</button>
-              <button class="media-action-button" id="videoChatButton" type="button"><span data-icon="video" aria-hidden="true"></span> Join video chat</button>
+              <button class="media-action-button" id="videoChatButton" type="button"><span data-icon="mic" aria-hidden="true"></span> Join voice</button>
               <button class="media-action-button hidden" id="micToggleButton" type="button" aria-pressed="true"><span data-icon="mic" aria-hidden="true"></span> Mic on</button>
-              <button class="media-action-button hidden" id="cameraToggleButton" type="button" aria-pressed="true"><span data-icon="camera" aria-hidden="true"></span> Camera on</button>
-              <span class="media-call-status" id="mediaCallStatus">Video plays from its original source.</span>
+              <button class="media-action-button hidden" id="cameraToggleButton" type="button" aria-pressed="false"><span data-icon="camera" aria-hidden="true"></span> Turn camera on</button>
+              <span class="media-call-status" id="mediaCallStatus">Film volume is yours; voice stays separate.</span>
             </div>
 
-            <section class="media-dock hidden" id="mediaDock" aria-label="Video chat participants">
-              <div class="media-dock-heading"><span><span class="live-pip"></span> THE SOFA</span><span id="videoChatCount">0 faces</span></div>
+            <section class="media-dock hidden" id="mediaDock" aria-label="Voice and video participants">
+              <div class="media-dock-heading"><span><span class="live-pip"></span> VOICE &amp; VIDEO</span><span id="videoChatCount">0 people</span></div>
               <div class="video-tile-grid" id="videoTiles"></div>
             </section>
           </section>
@@ -306,23 +315,23 @@
                 </div>
                 <div class="emoji-autocomplete hidden" id="emojiAutocomplete" role="listbox" aria-label="Emoji suggestions"></div>
                 <div class="reaction-tray" id="reactionTray" aria-label="Quick reactions">
-                <button type="button" data-emoji="❤️" aria-label="React with heart">❤️</button>
-                <button type="button" data-emoji="😂" aria-label="React with laugh">😂</button>
-                <button type="button" data-emoji="👏" aria-label="React with applause">👏</button>
-                <button type="button" data-emoji="😮" aria-label="React with surprise">😮</button>
-                <button type="button" data-emoji="🍿" aria-label="React with popcorn">🍿</button>
-                <button type="button" data-emoji="✨" aria-label="React with sparkle">✨</button>
-                <button type="button" data-emoji="🔥" aria-label="React with fire">🔥</button>
-                <button type="button" data-emoji="🥹" aria-label="React with teary smile">🥹</button>
-                <button type="button" data-emoji="🙌" aria-label="React with celebration">🙌</button>
-                <button type="button" data-emoji="👀" aria-label="React with eyes">👀</button>
-              </div>
-              <form class="chat-compose" id="chatForm">
-                <label class="sr-only" for="chatInput">Write a message to the room</label>
-                <button class="picker-toggle" id="chatPickerToggle" type="button" aria-label="Open emoji and sticker picker" aria-expanded="false" aria-controls="chatPicker" data-icon="smile"></button>
-                <input id="chatInput" maxlength="500" placeholder="Message your watch party…" autocomplete="off">
-                <button class="chat-send-button" type="submit" aria-label="Send message" data-icon="send"></button>
-              </form>
+                  <button type="button" data-emoji="❤️" aria-label="React with heart">❤️</button>
+                  <button type="button" data-emoji="😂" aria-label="React with laugh">😂</button>
+                  <button type="button" data-emoji="👏" aria-label="React with applause">👏</button>
+                  <button type="button" data-emoji="😮" aria-label="React with surprise">😮</button>
+                  <button type="button" data-emoji="🍿" aria-label="React with popcorn">🍿</button>
+                  <button type="button" data-emoji="✨" aria-label="React with sparkle">✨</button>
+                  <button type="button" data-emoji="🔥" aria-label="React with fire">🔥</button>
+                  <button type="button" data-emoji="🥹" aria-label="React with teary smile">🥹</button>
+                  <button type="button" data-emoji="🙌" aria-label="React with celebration">🙌</button>
+                  <button type="button" data-emoji="👀" aria-label="React with eyes">👀</button>
+                </div>
+                <form class="chat-compose" id="chatForm">
+                  <label class="sr-only" for="chatInput">Write a message to the room</label>
+                  <button class="picker-toggle" id="chatPickerToggle" type="button" aria-label="Open emoji and sticker picker" aria-expanded="false" aria-controls="chatPicker" data-icon="smile"></button>
+                  <input id="chatInput" maxlength="500" placeholder="Message your watch party…" autocomplete="off">
+                  <button class="chat-send-button" type="submit" aria-label="Send message" data-icon="send"></button>
+                </form>
               </div>
               <p class="chat-footnote">Messages are shared with everyone in this room.</p>
             </section>
@@ -341,6 +350,7 @@
       </main>
     </div>
 
+    <!-- Profile and stream dialogs -->
     <dialog class="modal" id="profileDialog">
       <form method="dialog" class="modal-card" id="profileForm">
         <button class="modal-close" id="closeProfileDialogButton" type="button" aria-label="Close">×</button>
@@ -353,16 +363,16 @@
         <details class="account-panel">
           <summary class="account-summary"><span class="account-summary-icon" data-icon="userRound" aria-hidden="true"></span><span><strong>Keep your name across devices</strong><small>Optional account</small></span><span class="account-summary-chevron" data-icon="chevronDown" aria-hidden="true"></span></summary>
           <div class="account-fields">
-          <p id="accountStatus" class="account-status">Guest session · create an account to keep this identity on another device.</p>
-          <label for="accountUsernameInput">USERNAME</label>
-          <input id="accountUsernameInput" maxlength="24" autocomplete="username" placeholder="e.g. maya_fox">
-          <label for="accountPasswordInput">PASSWORD</label>
-          <input id="accountPasswordInput" type="password" minlength="10" maxlength="128" autocomplete="new-password" placeholder="At least 10 characters">
-          <div class="account-actions" id="accountGuestButtons">
-            <button class="button button-outline" id="registerButton" type="button">Create account</button>
-            <button class="button button-outline" id="loginButton" type="button">Sign in</button>
-          </div>
-          <button class="button button-outline hidden" id="logoutButton" type="button">Sign out</button>
+            <p id="accountStatus" class="account-status">Guest session · create an account to keep this identity on another device.</p>
+            <label for="accountUsernameInput">USERNAME</label>
+            <input id="accountUsernameInput" maxlength="24" autocomplete="username" placeholder="e.g. maya_fox">
+            <label for="accountPasswordInput">PASSWORD</label>
+            <input id="accountPasswordInput" type="password" minlength="10" maxlength="128" autocomplete="new-password" placeholder="At least 10 characters">
+            <div class="account-actions" id="accountGuestButtons">
+              <button class="button button-outline" id="registerButton" type="button">Create account</button>
+              <button class="button button-outline" id="loginButton" type="button">Sign in</button>
+            </div>
+            <button class="button button-outline hidden" id="logoutButton" type="button">Sign out</button>
           </div>
         </details>
       </form>
@@ -398,9 +408,10 @@
       </form>
     </dialog>
 
+    <!-- Toast feedback and browser modules -->
     <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
-    <script src="/static/icons.js?v=ui-feedback-9" defer></script>
-    <script src="/static/media.js?v=ui-feedback-8" defer></script>
-    <script src="/static/app.js?v=ui-feedback-13" defer></script>
+    <script src="/static/icons.js?v=player-volume-1" defer></script>
+    <script src="/static/media.js?v=voice-camera-controls-1" defer></script>
+    <script src="/static/app.js?v=player-volume-buffer-1" defer></script>
   </body>
 </html>

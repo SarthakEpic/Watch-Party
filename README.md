@@ -1,6 +1,6 @@
 # Afterglow — Watch Party
 
-Afterglow is a small watch-party app built to be easy to explain and extend. Friends discover a film, open a room, share an invite, and keep each browser's video player close to one shared playback clock.
+Afterglow is a browser-based watch-party app. Friends can find a film, open a room, share an invite, and watch through a shared playback clock while they chat and use voice or video.
 
 ## Run it locally
 
@@ -15,17 +15,17 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 The app works without an API key and shows 24 hand-picked films (18 at a time). To load real poster links, film details, and IMDb ratings, connect OMDb:
 
-1. Open the [OMDb API key page](https://www.omdbapi.com/apikey.aspx), choose the free option, and enter the requested name, email, and usage information. The current form does not ask for a street or mailing address. Confirm the email if OMDb sends an activation link.
+1. Request a key from the [OMDb API key page](https://www.omdbapi.com/apikey.aspx) and complete the provider's signup steps. Confirm the email if OMDb sends an activation link.
 2. Open the existing `.env` file in a text editor. If it does not exist, create a file named `.env` in the project folder.
-3. Add `OMDB_API_KEY=your_key_here`. Replace the example text with your key, without quotes, and do not share it in chat.
-4. Refresh the browser. The updated server reads `.env` when the catalog loads. If the server was already running before this code update, restart it once (`Ctrl+C`, then `python -m uvicorn app:app --reload`) so it loads the updated code. The catalog status should say OMDb posters and IMDb ratings.
+3. Add `OMDB_API_KEY=your_key_here`. Replace the example text with your key, without quotes. Keep the key out of source control and browser code.
+4. Restart the server after changing `.env` (`Ctrl+C`, then `python -m uvicorn app:app --reload`) and refresh the browser. The catalog status should say OMDb posters and IMDb ratings.
 
-The key stays in the Python server and is not sent to the browser. The local .env file is private and excluded from version control. The free OMDb key is limited to 1,000 requests per day. The app caches movie details and searches in SQLite for 12 hours to reduce repeat requests. Its browse page uses a curated set because OMDb provides title search rather than a trending/discovery feed. See [OMDb's API page](https://www.omdbapi.com/) and [key request page](https://www.omdbapi.com/apikey.aspx) for current details.
+The key stays on the Python server and is not sent to the browser. The local `.env` file is private and excluded from version control. OMDb request limits and key options can change; see [OMDb's API page](https://www.omdbapi.com/) and [key request page](https://www.omdbapi.com/apikey.aspx) for current details. The app caches movie details and searches in SQLite for 12 hours to reduce repeat requests. Its browse page uses a curated set because OMDb provides title search rather than a trending/discovery feed.
 
 ### Live stickers from KLIPY
 
 1. Create a KLIPY app in the [KLIPY Partner Panel](https://partner.klipy.com/) and copy its app key.
-2. Add `KLIPY_APP_KEY=your_key_here` to your private `.env` file, or add `KLIPY_APP_KEY` in your host's environment settings (for example, Render). Do not paste the key into chat or commit it.
+2. Add `KLIPY_APP_KEY=your_key_here` to your private `.env` file, or add `KLIPY_APP_KEY` in your host's environment settings (for example, Render). Do not commit the key or expose it in browser source.
 3. Restart the local server or redeploy. In a room, open the smile button, choose **Stickers**, and search KLIPY or tap a movie-night search suggestion.
 
 KLIPY's browser API requires the app key in client requests, so it is visible in the browser's network tools; it is not a password or a server secret. Use any domain restrictions available in the KLIPY Partner Panel. Stickers load directly from KLIPY and show provider credit in the picker and chat. They are not copied into this app's storage. See [KLIPY's sticker API documentation](https://docs.klipy.com/stickers-api) and [API terms](https://klipy.com/support/api-terms) for current limits and usage rules.
@@ -75,6 +75,27 @@ The server is the source of truth for the room. A play event contains a position
 
 See [docs/STREAMING_AND_LATENCY.md](docs/STREAMING_AND_LATENCY.md) for each source's media path, the latency correction design, WebRTC/TURN requirements, measurement limits, and the cloud-browser distinction.
 
+## Project layout
+
+```text
+.
+├── app.py                 FastAPI app, room state, accounts, catalog, and routes
+├── scripts/
+│   └── benchmark.py       Local WebSocket fan-out measurement
+├── static/
+│   ├── index.html         Page structure and dialogs
+│   ├── styles.css         Layout, responsive styles, and theme
+│   ├── app.js             Lobby, room, playback, and chat behavior
+│   ├── media.js           Camera, microphone, screen share, and LiveKit
+│   └── icons.js           Inline SVG icons
+├── docs/                  Setup, deployment, and performance notes
+├── requirements.txt       Python dependencies
+├── render.yaml            Render deployment configuration
+└── .env.example           Optional local service settings
+```
+
+The backend and browser files are grouped by feature and include section headings. `app.py` remains the server entry point used by Uvicorn and Render. The benchmark is a development tool; it is not part of the app's runtime.
+
 ## Put it online
 
 For a free public demo deployment, follow [docs/FREE_DEPLOYMENT.md](docs/FREE_DEPLOYMENT.md). The free host sleeps when idle and its temporary filesystem means SQLite accounts and room data reset after restarts; the guide explains these limits before you share the link.
@@ -89,9 +110,9 @@ The app stores group poll choices in SQLite. Positive votes add weight to the ge
 
 IMDb scores shown in the catalog are the ratings returned by OMDb; the IMDb links open the original IMDb title page. Moctale remains an external title-specific search because this project has not found a public developer API for its recommendation data. The app does not claim to import Moctale's lists.
 
-OMDb says it is not affiliated with IMDb. Its API is described as noncommercial and its data as CC BY-NC 4.0; this project displays provider attribution and is intended as a student/demo project. Review the current [OMDb terms and key options](https://www.omdbapi.com/) before using the data commercially.
+OMDb says it is not affiliated with IMDb. Its API is described as noncommercial and its data as CC BY-NC 4.0; this project displays provider attribution. Review the current [OMDb terms and key options](https://www.omdbapi.com/) before using the data commercially.
 
-## Interview walkthrough
+## Demo walkthrough
 
 1. Show that the frontend is just semantic HTML, component-style CSS classes, and ordinary JavaScript.
 2. Open the profile dialog and explain that a server-issued guest session is automatic, with optional username/password accounts.
@@ -102,4 +123,4 @@ OMDb says it is not affiliated with IMDb. Its API is described as noncommercial 
 7. Transfer host to another connected person and explain why authorization is checked by the server.
 8. Show the performance notes for the local measurement method, results, and limits.
 
-This is a working interview/demo project, not a finished internet-scale service. Run one Uvicorn worker for the no-service local setup. Optional Redis coordinates multiple workers on one machine when they share the same local SQLite file; multi-host deployment still needs a shared transactional database. Configure and verify a TURN/SFU service and object storage before relying on group calls or uploads over the public internet. The 14.09 ms p95 result is historical control-message data and has not been rerun after the authentication and Redis changes.
+This is a demo project, not a finished internet-scale service. Run one Uvicorn worker for the no-service local setup. Optional Redis coordinates multiple workers on one machine when they share the same local SQLite file; multi-host deployment still needs a shared transactional database. Configure and verify a TURN/SFU service and object storage before relying on group calls or uploads over the public internet. The 14.09 ms p95 result is historical control-message data and has not been rerun after the authentication and Redis changes.

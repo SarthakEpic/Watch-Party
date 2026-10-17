@@ -73,10 +73,10 @@ Accounts are local to the database and currently have hashed passwords, HTTP-onl
 
 ## Measure what changed
 
-The included `benchmark.py` measures room-control WebSocket fan-out only. Run it on the server for a loopback measurement:
+The included `scripts/benchmark.py` measures room-control WebSocket fan-out only. Run it on the server for a loopback measurement:
 
 ```powershell
-python benchmark.py --url ws://127.0.0.1:8000 --clients 10 --actions 30
+python scripts/benchmark.py --url ws://127.0.0.1:8000 --clients 10 --actions 30
 ```
 
 For a LAN result, run the same command from another computer using the server's LAN address. Save the date, host/client hardware, Wi-Fi or Ethernet, server address, client count, action count, and p50/p95/p99. This still does not measure video smoothness, startup delay, YouTube buffering, or WebRTC glass-to-glass latency. To measure call quality, record browser WebRTC stats and the LiveKit dashboard metrics under the actual call conditions.

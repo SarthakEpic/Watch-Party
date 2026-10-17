@@ -1,5 +1,6 @@
 /* Small WebRTC mesh for room video chat and a live screen share. */
 (function () {
+  // Room-media state and service configuration
   "use strict";
 
   const peers = new Map();
@@ -8,6 +9,7 @@
   let socket = null;
   let room = null;
   let localVideoStream = null;
+  let localMediaStarting = false;
   let localScreenStream = null;
   let pendingScreenStart = false;
   let rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
@@ -65,6 +67,7 @@
     return result;
   }
 
+  // Peer-to-peer media and participant tiles
   function sendSignal(peerId, channel, signal) {
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     socket.send(JSON.stringify({
@@ -77,18 +80,22 @@
 
   function addTile(id, label, stream, isLocal) {
     let tile = tiles.get(id);
+    if (tile && tile.isVoice) {
+      removeTile(id);
+      tile = null;
+    }
     if (!tile) {
       const article = document.createElement("article");
       article.className = "video-tile" + (isLocal ? " is-local" : "");
       const video = document.createElement("video");
       video.autoplay = true;
       video.playsInline = true;
-      video.muted = Boolean(isLocal);
+      video.muted = true;
       const caption = document.createElement("span");
       caption.className = "video-tile-name";
       article.append(video, caption);
       ui.tiles.append(article);
-      tile = { article: article, video: video, caption: caption };
+      tile = { article: article, video: video, caption: caption, isVoice: false, memberId: isLocal ? identity.userId : id.replace(/^peer:/, "") };
       tiles.set(id, tile);
     }
     tile.caption.textContent = label;
@@ -99,9 +106,34 @@
   function removeTile(id) {
     const tile = tiles.get(id);
     if (!tile) return;
-    if (tile.video.srcObject) tile.video.srcObject = null;
+    if (tile.video && tile.video.srcObject) tile.video.srcObject = null;
     tile.article.remove();
     tiles.delete(id);
+  }
+
+  function addVoiceTile(id, memberId, label, isLocal) {
+    const existing = tiles.get(id);
+    if (existing && !existing.isVoice) return;
+    const article = existing ? existing.article : document.createElement("article");
+    if (!existing) {
+      article.className = "video-tile voice-tile" + (isLocal ? " is-local" : "");
+      const avatar = document.createElement("span");
+      avatar.className = "voice-avatar";
+      avatar.setAttribute("aria-hidden", "true");
+      const copy = document.createElement("span");
+      copy.className = "voice-tile-copy";
+      const name = document.createElement("strong");
+      const mode = document.createElement("small");
+      mode.textContent = "VOICE CONNECTED";
+      copy.append(name, mode);
+      article.append(avatar, copy);
+      ui.tiles.append(article);
+    }
+    const name = article.querySelector(".voice-tile-copy strong");
+    const avatar = article.querySelector(".voice-avatar");
+    name.textContent = label;
+    avatar.textContent = (label.trim().charAt(0) || "?").toUpperCase();
+    tiles.set(id, { article: article, isVoice: true, memberId: memberId });
   }
 
   function setMediaButtonLabel(button, iconName, label) {
@@ -117,6 +149,12 @@
     entry.pc.onicecandidate = null;
     entry.pc.onnegotiationneeded = null;
     entry.pc.close();
+    if (entry.remoteAudio) {
+      entry.remoteAudio.pause();
+      entry.remoteAudio.srcObject = null;
+      entry.remoteAudio.remove();
+      entry.remoteAudio = null;
+    }
     if (entry.channel === "video") removeTile("peer:" + entry.remoteId);
   }
 
@@ -172,9 +210,26 @@
         ui.sharerName.textContent = sharer ? "· " + sharer.name : "";
         ui.screenVideo.play().catch(function () {});
         ui.status.textContent = "Live screen from " + (sharer ? sharer.name : "a room member");
-      } else {
+      } else if (event.track.kind === "audio") {
+        if (!entry.remoteAudio) {
+          const audio = document.createElement("audio");
+          audio.autoplay = true;
+          audio.playsInline = true;
+          audio.className = "sfu-audio";
+          document.body.append(audio);
+          entry.remoteAudio = audio;
+        }
+        entry.remoteAudio.srcObject = incoming;
+        entry.remoteAudio.play().catch(function () {});
+      } else if (event.track.kind === "video") {
         const member = membersById().get(remoteId);
-        addTile("peer:" + remoteId, member ? member.name : "Room guest", incoming, false);
+        const key = "peer:" + remoteId;
+        const label = member ? member.name : "Room guest";
+        event.track.onended = function () {
+          removeTile(key);
+          if (room && (room.video_members || []).includes(remoteId)) addVoiceTile(key, remoteId, label, false);
+        };
+        addTile(key, label, incoming, false);
         renderVideoChatStatus();
       }
     };
@@ -220,6 +275,7 @@
     }
   }
 
+  // LiveKit tracks and room lifecycle
   function isScreenTrack(publication, sdk) {
     return publication && publication.source === sdk.Track.Source.ScreenShare;
   }
@@ -280,7 +336,7 @@
     renderVideoChatStatus();
   }
 
-  async function openLiveKitCall() {
+  async function openLiveKitCall(withCamera) {
     if (liveKitRoom || liveKitConnecting) return Boolean(liveKitRoom);
     liveKitConnecting = true;
     let roomConnection = null;
@@ -325,9 +381,11 @@
       try {
         await liveKitRoom.localParticipant.setMicrophoneEnabled(true, { echoCancellation: true, noiseSuppression: true });
       } catch (_) { onToast("Microphone could not start; camera video may still work."); }
-      try {
-        await liveKitRoom.localParticipant.setCameraEnabled(true);
-      } catch (_) { onToast("Camera could not start; you can still join with microphone audio."); }
+      if (withCamera) {
+        try {
+          await liveKitRoom.localParticipant.setCameraEnabled(true);
+        } catch (_) { onToast("Camera could not start; you can still join with microphone audio."); }
+      }
       const participant = liveKitRoom.localParticipant;
       participant.trackPublications.forEach(function (publication) {
         if (publication.track) mountLiveKitTrack(publication.track, publication, participant, true);
@@ -370,23 +428,36 @@
     renderVideoChatStatus();
   }
 
+  // Shared room media state and local device controls
   function renderVideoChatStatus() {
     const people = room && room.video_members || [];
     const inCall = people.includes(identity.userId);
     ui.dock.classList.toggle("hidden", people.length === 0 && !(room && room.screen_sharer));
-    ui.count.textContent = people.length + (people.length === 1 ? " face" : " faces");
-    setMediaButtonLabel(ui.videoButton, inCall ? "videoOff" : "video", inCall ? "Leave video chat" : "Join video chat");
+    ui.count.textContent = people.length + (people.length === 1 ? " person" : " people");
+    setMediaButtonLabel(ui.videoButton, inCall ? "micOff" : "mic", inCall ? "Leave voice" : "Join voice");
     ui.videoButton.classList.toggle("is-on", inCall);
     ui.micButton.classList.toggle("hidden", !inCall);
     ui.cameraButton.classList.toggle("hidden", !inCall);
-    if (!inCall && !localScreenStream && !(room && room.screen_sharer)) ui.status.textContent = "Media stays with its source.";
+    const memberIds = new Set(people);
+    for (const [key, tile] of Array.from(tiles.entries())) {
+      if (tile.memberId && !memberIds.has(tile.memberId)) removeTile(key);
+    }
+    people.forEach(function (memberId) {
+      const isLocal = memberId === identity.userId;
+      const key = isLocal ? "local" : "peer:" + memberId;
+      if (!tiles.has(key) || tiles.get(key).isVoice) {
+        const member = membersById().get(memberId);
+        addVoiceTile(key, memberId, (isLocal ? identity.name + " · you" : member && member.name || "Room guest"), isLocal);
+      }
+    });
+    if (!inCall && !localScreenStream && !(room && room.screen_sharer)) ui.status.textContent = "Film volume is yours; voice stays separate.";
     if (inCall && (localVideoStream || liveKitRoom)) {
       const audioEnabled = liveKitRoom ? liveKitRoom.localParticipant.isMicrophoneEnabled :
         Boolean(localVideoStream.getAudioTracks()[0] && localVideoStream.getAudioTracks()[0].enabled);
       const cameraEnabled = liveKitRoom ? liveKitRoom.localParticipant.isCameraEnabled :
         Boolean(localVideoStream.getVideoTracks()[0] && localVideoStream.getVideoTracks()[0].enabled);
       setMediaButtonLabel(ui.micButton, audioEnabled ? "mic" : "micOff", audioEnabled ? "Mic on" : "Mic off");
-      setMediaButtonLabel(ui.cameraButton, cameraEnabled ? "camera" : "cameraOff", cameraEnabled ? "Camera on" : "Camera off");
+      setMediaButtonLabel(ui.cameraButton, cameraEnabled ? "cameraOff" : "camera", cameraEnabled ? "Turn camera off" : "Turn camera on");
       ui.micButton.classList.toggle("is-danger", !audioEnabled);
       ui.cameraButton.classList.toggle("is-danger", !cameraEnabled);
       ui.micButton.setAttribute("aria-pressed", String(audioEnabled));
@@ -472,31 +543,35 @@
     renderVideoChatStatus();
   }
 
-  async function startVideoChat() {
+  async function startVideoChat(withCamera) {
+    withCamera = Boolean(withCamera);
+    if (localVideoStream || localMediaStarting) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      onToast("Video chat needs a secure page (HTTPS or localhost) and a supported browser.");
+      onToast("Voice chat needs a secure page (HTTPS or localhost) and a supported browser.");
       return;
     }
     if (mediaMode === "sfu") {
-      await openLiveKitCall();
+      await openLiveKitCall(withCamera);
       return;
     }
     if (room && (room.video_members || []).filter(function (id) { return id !== identity.userId; }).length >= 4) {
-      onToast("Peer-to-peer video is limited to four people. Configure the LiveKit SFU for larger calls.");
+      onToast("Peer-to-peer voice calls are limited to four people. Configure the LiveKit SFU for larger calls.");
       return;
     }
+    localMediaStarting = true;
     try {
       localVideoStream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true },
-        video: { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 12, max: 15 } },
+        video: withCamera ? { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 12, max: 15 } } : false,
       });
-      addTile("local", identity.name + " · you", localVideoStream, true);
-      ui.status.textContent = "Connecting your camera and mic…";
-      sendAction("video.join", {});
-      syncRoom(room);
+      if (withCamera) addTile("local", identity.name + " · you", localVideoStream, true);
+      ui.status.textContent = withCamera ? "Connecting your camera and mic…" : "Connecting your microphone…";
+      sendAction("video.join", { media_mode: mediaMode === "sfu" ? "sfu" : "mesh" });
     } catch (error) {
       localVideoStream = null;
-      onToast(error && error.name === "NotAllowedError" ? "Allow camera and microphone access to join video chat." : "Camera and microphone could not start.");
+      onToast(error && error.name === "NotAllowedError" ? "Allow microphone access to join voice chat." : "The microphone could not start.");
+    } finally {
+      localMediaStarting = false;
     }
   }
 
@@ -547,7 +622,7 @@
     }
     if (mediaMode === "sfu") {
       if (!liveKitRoom) {
-        onToast("Join video chat first, then start your screen share.");
+        onToast("Join voice first, then start your screen share.");
         return;
       }
       pendingScreenStart = true;
@@ -595,11 +670,41 @@
     }
     if (!localVideoStream) return;
     const tracks = kind === "audio" ? localVideoStream.getAudioTracks() : localVideoStream.getVideoTracks();
+    if (!tracks.length && kind === "video") {
+      navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 12, max: 15 } } })
+        .then(function (cameraStream) {
+          const cameraTrack = cameraStream.getVideoTracks()[0];
+          if (!cameraTrack) return;
+          localVideoStream.addTrack(cameraTrack);
+          peers.forEach(function (entry) {
+            if (entry.channel === "video" && entry.pc.signalingState !== "closed") entry.pc.addTrack(cameraTrack, localVideoStream);
+          });
+          addTile("local", identity.name + " · you", localVideoStream, true);
+          renderVideoChatStatus();
+        })
+        .catch(function (error) { onToast(error && error.name === "NotAllowedError" ? "Allow camera access to turn your camera on." : "The camera could not start."); });
+      return;
+    }
     if (!tracks.length) return;
+    if (kind === "video") {
+      const cameraTrack = tracks[0];
+      peers.forEach(function (entry) {
+        if (entry.channel !== "video" || entry.pc.signalingState === "closed") return;
+        entry.pc.getSenders().forEach(function (sender) {
+          if (sender.track === cameraTrack) entry.pc.removeTrack(sender);
+        });
+      });
+      localVideoStream.removeTrack(cameraTrack);
+      cameraTrack.stop();
+      removeTile("local");
+      renderVideoChatStatus();
+      return;
+    }
     tracks[0].enabled = !tracks[0].enabled;
     renderVideoChatStatus();
   }
 
+  // Public controls used by the main app
   window.AfterglowMedia = {
     configure: function (options) {
       identity = { userId: options.userId, name: options.name };

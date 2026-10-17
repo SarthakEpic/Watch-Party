@@ -7,7 +7,6 @@ import asyncio
 import http.cookiejar
 import inspect
 import json
-import statistics
 import time
 import urllib.request
 import uuid
@@ -15,17 +14,17 @@ import uuid
 import websockets
 
 
-def new_session(base_url: str) -> tuple[urllib.request.OpenerDirector, str, str]:
+def new_session(base_url: str) -> tuple[urllib.request.OpenerDirector, str]:
     jar = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
     with opener.open(base_url.rstrip("/") + "/api/session", timeout=5) as response:
-        user = json.loads(response.read().decode("utf-8"))["user"]
+        response.read()
     cookie = "; ".join(item.name + "=" + item.value for item in jar)
-    return opener, user["id"], cookie
+    return opener, cookie
 
 
-def create_room(base_url: str) -> tuple[str, str, str]:
-    opener, host_id, cookie = new_session(base_url)
+def create_room(base_url: str) -> tuple[str, str]:
+    opener, cookie = new_session(base_url)
     request = urllib.request.Request(
         base_url.rstrip("/") + "/api/rooms",
         data=json.dumps(
@@ -39,11 +38,12 @@ def create_room(base_url: str) -> tuple[str, str, str]:
     )
     with opener.open(request, timeout=5) as response:
         result = json.loads(response.read().decode("utf-8"))
-    return result["room"]["code"], host_id, cookie
+    return result["room"]["code"], cookie
 
 
 def guest_cookie(base_url: str) -> str:
-    return new_session(base_url)[2]
+    _, cookie = new_session(base_url)
+    return cookie
 
 
 async def reader(socket, queue: asyncio.Queue) -> None:
@@ -75,7 +75,7 @@ async def run(url: str, clients: int, actions: int, timeout: float) -> None:
     if clients < 2:
         raise SystemExit("Use at least 2 clients.")
     base = url.replace("ws://", "http://", 1).replace("wss://", "https://", 1)
-    code, _, host_cookie = await asyncio.to_thread(create_room, base)
+    code, host_cookie = await asyncio.to_thread(create_room, base)
     socket_url = url.rstrip("/")
     sockets: list[websockets.ClientConnection] = []
     queues: list[asyncio.Queue] = []
