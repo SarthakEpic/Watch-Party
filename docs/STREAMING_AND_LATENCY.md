@@ -22,7 +22,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | YouTube | Each browser loads the official YouTube IFrame player. | Host play, pause, and seek commands, plus a shared position. | The video must allow embedding and be available in each viewer's region. The embed player is not a movie-rights bypass. |
 | Direct URL | Each browser's `<video>` downloads from the supplied MP4/WebM URL. | The media URL and playback clock. | Every viewer must be able to reach the URL; the source should support byte-range requests for efficient seeking. |
-| Uploaded file | Each viewer streams the MP4/WebM from `/media/...`. | The app URL and playback clock. | 500 MB cap. Files use local disk by default; optional private S3-compatible storage can hold them off-machine. The app server still issues the media link, but large deployments should serve through storage/CDN infrastructure. |
+| Uploaded file | Each viewer streams the MP4/WebM from `/media/...`. | The app URL and playback clock. | 3 GB cap. Files use local disk by default; optional private S3-compatible storage can hold them off-machine. The app server still issues the media link, but large deployments should serve through storage/CDN infrastructure. |
 | Embedded webpage | A sandboxed iframe loads the same page URL on each device. | The page URL only. | Page controls and cookies are not synchronized. Many sites block frames with `X-Frame-Options` or Content Security Policy. This is an embedded page, not a cloud browser. |
 | Screen share | The selected screen/tab is captured by the sharer's browser and sent to viewers over WebRTC. | Who is sharing; the live media itself. | Requires HTTPS or localhost and browser permission. Tab audio availability depends on what the browser lets the user select. DRM-protected streams may appear black. |
 | Video chat | WebRTC peer mesh by default; optional LiveKit SFU when configured. | Who joined the call; mesh offer/answer and ICE signaling, or a short-lived LiveKit room token. | Mesh is for small rooms. LiveKit forwards one published stream to subscribers; a provider/server is required. Optional coturn credentials provide relay paths where direct connections fail. |
@@ -52,7 +52,7 @@ Control-message latency and video startup latency are different measurements. A 
 - A failed media URL leaves room chat and controls online; the player shows an unavailable state.
 - YouTube's player can reject a video when embedding is disabled, age/region rules apply, or the network blocks YouTube.
 - The iframe cannot detect or work around a site's frame policy. Use screen sharing for a page that the sharer is permitted to show.
-- Uploads reject files outside MP4/WebM and files larger than 500 MB. They use local disk by default; S3 mode uses private objects and short-lived presigned links. A production rollout still needs quotas, cleanup, backups, and storage monitoring.
+- Uploads reject files outside MP4/WebM and files larger than 3 GB. They use local disk by default; S3 mode uses private objects and short-lived presigned links. A production rollout still needs quotas, cleanup, backups, and storage monitoring.
 - If peer media cannot connect, room playback/chat still work. Configure and test TURN or LiveKit on the networks where calls will be used.
 - Account records and sessions are stored in SQLite. Sign-in and account-creation attempts have basic per-IP limits, but there is no password recovery, email verification, or MFA.
 

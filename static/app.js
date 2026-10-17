@@ -24,6 +24,7 @@ const DEMO_SAMPLE_VIDEO = {
   genre_names: ["Sample clip"],
 };
 const LEGACY_DEMO_VIDEO_IDS = ["sample-spring-reel", "official-tengen-preview"];
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024 * 1024;
 const YOUTUBE_DRIFT_THRESHOLD_SECONDS = 1.5;
 const YOUTUBE_CORRECTION_COOLDOWN_MS = 5000;
 const YOUTUBE_BUFFER_STALL_MS = 10000;
@@ -1644,7 +1645,7 @@ function setSourceMode(kind) {
     ui.videoUrl.placeholder = "https://example.com/page";
     hint.textContent = "This is a shared embedded webpage, not a cloud browser. Many sites block embedding; use Share screen for those.";
   } else if (state.sourceMode === "file") {
-    hint.textContent = "MP4 and WebM files up to 500 MB are uploaded to this app's server, then streamed to each participant. Only upload media you have permission to share.";
+    hint.textContent = "MP4 and WebM files up to 3 GB are uploaded to this app's server, then streamed to each participant. Only upload media you have permission to share.";
   } else {
     label.textContent = "DIRECT VIDEO FILE LINK";
     ui.videoUrl.placeholder = "https://example.com/your-film.mp4";
@@ -1734,8 +1735,8 @@ async function submitVideoForm() {
       ui.videoFile.focus();
       return;
     }
-    if (file.size > 500 * 1024 * 1024 || !/\.(mp4|webm)$/i.test(file.name)) {
-      error.textContent = "Choose an MP4 or WebM file that is 500 MB or smaller.";
+    if (file.size > MAX_UPLOAD_BYTES || !/\.(mp4|webm)$/i.test(file.name)) {
+      error.textContent = "Choose an MP4 or WebM file that is 3 GB or smaller.";
       error.classList.remove("hidden");
       return;
     }

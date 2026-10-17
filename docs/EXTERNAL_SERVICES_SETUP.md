@@ -102,5 +102,5 @@ The health response confirms the selected configuration. It does not prove that 
 
 - Redis plus SQLite supports workers on one machine. For multiple app servers, the project still needs a shared transactional database such as PostgreSQL; that adapter is not implemented.
 - LiveKit only carries camera and screen-share media. It does not proxy YouTube or improve YouTube buffering.
-- Object storage stores uploaded files but does not transcode them or change their quality. The app's upload limit is 500 MB. Provider storage and data-transfer limits apply, so monitor usage and review the active plan.
+- Object storage stores uploaded files but does not transcode them or change their quality. The app's upload limit is 3 GB. Provider storage and data-transfer limits apply, so monitor usage and review the active plan.
 - A public deployment still needs HTTPS for the app, backups, usage limits, and service billing/usage monitoring.

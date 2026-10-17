@@ -38,7 +38,7 @@ ROOT = Path(__file__).resolve().parent
 STATIC_DIR = ROOT / "static"
 DATABASE_PATH = ROOT / "watch_party.sqlite3"
 UPLOAD_DIR = ROOT / "uploads"
-MAX_UPLOAD_BYTES = 500 * 1024 * 1024
+MAX_UPLOAD_BYTES = 3 * 1024 * 1024 * 1024
 MAX_MESH_MEDIA_PARTICIPANTS = 4
 SESSION_COOKIE = "afterglow_session"
 SESSION_MAX_AGE = 60 * 60 * 24 * 30
@@ -1439,7 +1439,7 @@ async def upload_room_media(
             while chunk := await file.read(1024 * 1024):
                 total += len(chunk)
                 if total > MAX_UPLOAD_BYTES:
-                    raise HTTPException(status_code=413, detail="Videos must be 500 MB or smaller.")
+                    raise HTTPException(status_code=413, detail="Videos must be 3 GB or smaller.")
                 output.write(chunk)
     except HTTPException:
         destination.unlink(missing_ok=True)
