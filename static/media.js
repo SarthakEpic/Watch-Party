@@ -280,6 +280,16 @@
     return publication && publication.source === sdk.Track.Source.ScreenShare;
   }
 
+  function hasLiveKitScreenAudio() {
+    if (!liveKitRoom || !window.LivekitClient) return false;
+    const source = window.LivekitClient.Track.Source.ScreenShareAudio || "screen_share_audio";
+    let found = false;
+    liveKitRoom.localParticipant.trackPublications.forEach(function (publication) {
+      if (publication.source === source) found = true;
+    });
+    return found;
+  }
+
   function mountLiveKitTrack(track, publication, participant, isLocal) {
     if (!track || !publication || !window.LivekitClient) return;
     const sdk = window.LivekitClient;
@@ -647,8 +657,14 @@
       pendingScreenStart = true;
       if (!sendAction("screen.start", { media_mode: "sfu" })) { pendingScreenStart = false; return; }
       try {
-        await liveKitRoom.localParticipant.setScreenShareEnabled(true);
+        await liveKitRoom.localParticipant.setScreenShareEnabled(true, {
+          audio: true,
+          systemAudio: "include",
+        });
         ui.status.textContent = "Sharing through the media server";
+        if (!hasLiveKitScreenAudio()) {
+          onToast("Screen video is live, but no sound was shared. Choose the tab playing the video and enable tab audio in the browser picker.");
+        }
       } catch (_) {
         pendingScreenStart = false;
         sendAction("screen.stop", {});
@@ -660,7 +676,11 @@
       localScreenStream = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: { ideal: 20, max: 30 } },
         audio: true,
+        systemAudio: "include",
       });
+      if (!localScreenStream.getAudioTracks().length) {
+        onToast("Screen video is live, but no sound was shared. Choose the tab playing the video and enable tab audio in the browser picker.");
+      }
       const track = localScreenStream.getVideoTracks()[0];
       if (track) track.onended = function () { stopLocalScreen(true); };
       pendingScreenStart = true;
