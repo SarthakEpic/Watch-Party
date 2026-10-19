@@ -611,9 +611,28 @@
     if (room && room.screen_sharer === identity.userId) ui.status.textContent = "Stopping screen share…";
   }
 
+  function getScreenShareUnavailableMessage() {
+    if (!window.isSecureContext) {
+      return "Screen sharing requires a secure HTTPS page. Open the room using its HTTPS link.";
+    }
+
+    const permissionsPolicy = document.permissionsPolicy || document.featurePolicy;
+    if (permissionsPolicy && typeof permissionsPolicy.allowsFeature === "function" &&
+        !permissionsPolicy.allowsFeature("display-capture")) {
+      return "Your browser blocks screen capture on this page. Open the HTTPS room directly in a browser tab.";
+    }
+
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function") {
+      return "This browser does not support screen sharing here. Open the HTTPS room directly in a current desktop browser; in-app browsers and some phones do not offer screen capture.";
+    }
+
+    return "";
+  }
+
   async function startScreenShare() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-      onToast("Screen sharing needs a supported browser and a secure page (HTTPS or localhost).");
+    const unavailableMessage = getScreenShareUnavailableMessage();
+    if (unavailableMessage) {
+      onToast(unavailableMessage);
       return;
     }
     if (room && room.screen_sharer) {
